@@ -1,6 +1,6 @@
 # Research: how creators run brand deals, and what it takes to sell to them globally
 
-**Date:** 2026-10-03 · **Method:** desk research only (web search). No creator interviews yet.
+**Date:** 2026-10-03, billing and company sections updated 2026-10-04 for the switch to Stripe · **Method:** desk research only (web search). No creator interviews yet.
 
 ## How to read this
 
@@ -280,67 +280,161 @@ Each platform has its own inbox, brief, approval flow, payout schedule and tax f
 
 ## 9. Charging our customers globally (SaaS billing)
 
-**This is about how *we* get paid, not how creators get paid by brands** (§5, §6.9).
+**This is about how *we* get paid, not how creators get paid by brands** (§5, §6.9). The MVP doesn't process brand-to-creator payments: invoices carry the creator's own payment details, and we track status and chase.
 
-### The constraint: the founder is based in Bangladesh
-- **Stripe is not available to Bangladesh residents** [docs](https://stripe.com/global). Using it needs a foreign company (§10).
-- **As a direct Stripe seller,** a non-EU business can owe EU VAT from the first sale (non-Union OSS), plus UK VAT and other countries' sales taxes.
-  - Stripe Tax *calculates*; the seller still registers and files.
-  - Stripe sells "Register for me" and partner filing at extra cost [docs, Stripe Tax].
-- **A merchant of record (MoR)** is the legal seller. It collects and remits sales tax, VAT and GST worldwide and handles chargebacks. The cost is a higher fee and less control over checkout.
+**Decision, 2026-10-04 ([ADR-000](../adr/000-billing-provider.md)):**
+- **Stripe Billing + Stripe Tax**, built in **test mode** now.
+- **Live mode needs a company** in a Stripe-supported country (§10).
+- **Paddle is the documented fallback** (§9.7).
 
-### Providers (checked 2026-10-03)
+**Not tax advice.** A tax adviser confirms obligations for the chosen company before the first sale.
 
-| Provider | Model | Fees | Bangladesh seller? | Payouts | Source |
-|---|---|---|---|---|---|
-| **Paddle** | MoR | 5% + 50¢, all-in | **Yes on paper.** Not on the unsupported list; individuals skip business verification | Wire or Payoneer, monthly, $100 minimum | [pricing](https://www.paddle.com/pricing), [countries](https://www.paddle.com/help/start/intro-to-paddle/which-countries-are-supported-by-paddle) |
-| **Polar** | MoR | 5% + 50¢, +1.5% non-US cards, +0.5% subscriptions. $15 per dispute; payout fees on top | **Listed.** Individuals are allowed if Stripe Connect Express supports them in the country, which is unverified for Bangladesh | Stripe Connect Express to a local bank | [countries](https://polar.sh/docs/merchant-of-record/supported-countries) |
-| **Creem** | MoR | 3.9% + 40¢ | **Yes, with caveat.** Bank-partner limits apply, e.g. personal accounts only | Local bank ($7 or 1%), or USDC (2%). Twice a month, 7–12 day holds | [countries](https://docs.creem.io/merchant-of-record/supported-countries) |
-| **Lemon Squeezy** | MoR (owned by Stripe) | 5% + 50¢ + surcharges | Bangladesh is on the bank-payout list, **but the product is winding down**: a Jan 2026 post admits slower support and fewer updates | Bank or PayPal (PayPal is not live in Bangladesh) | [2026 update](https://www.lemonsqueezy.com/blog/2026-update) |
-| **Stripe Managed Payments** | MoR (GA 2026-04-29) | Stripe fees **+3.5%** | **No.** Limited to 37 business locations | Stripe | [eligibility](https://docs.stripe.com/payments/managed-payments/eligibility) |
-| **Dodo Payments** | MoR | 4% + 40¢ + surcharges | **No for new accounts** since 2026-03-23. Eligibility follows the ID's country, so a US company doesn't get around it | — | [countries](https://docs.dodopayments.com/miscellaneous/accepted-countries-and-territories) |
-| **Stripe direct** | Processor | ~2.9% + 30¢, +1.5% intl, +0.7% Billing, +0.5% Tax | **Only through a foreign company** | Bank in the company's country | [pricing](https://stripe.com/pricing) |
-| FastSpring, 2Checkout | MoR | Quote-based; third parties report ~5.9% + 95¢ and ~6% + 60¢ | Not blocked on paper; 2Checkout reviews each application by hand, and one Bangladesh merchant reports rejection | — | [FastSpring](https://fastspring.com/terms-use/restricted-countries), [2Checkout](https://docs.2checkout.com) |
+### 9.1 Why Stripe needs a company first
+- **Stripe doesn't support Bangladesh** as an account country [docs](https://stripe.com/global).
+- **Test mode needs no business verification**, so the whole billing integration (roadmap M4) can be built and tested now.
+- **Live charges need an activated account** for a company in a supported country. The two candidate routes are in §10.
 
-**Fee on a $15/month subscriber, international card:**
+### 9.2 Stripe fees (checked 2026-10-04)
 
-| Option | Fee | Note |
+| Item | US account (US LLC) | German account (UG/GmbH) | Source |
+|---|---|---|---|
+| Card processing | 2.9% + 30¢ domestic; +1.5% international card; +1% currency conversion | 1.5% + €0.25 standard EEA; 2.8% + €0.25 premium EEA; 2.5% + €0.25 UK; 3.15% + €0.25 international; +2% conversion | [docs](https://stripe.com/pricing), [docs DE](https://stripe.com/en-de/pricing) |
+| Billing | 0.7% of billing volume, pay-as-you-go. Checkout and the Customer Portal are included. | same | [docs](https://stripe.com/billing/pricing) |
+| Stripe Tax (Basic) | 0.5% per transaction with Checkout or Billing, **charged only where we have an active registration** | same (€ equivalent) | [docs](https://stripe.com/tax/pricing) |
+| Stripe Tax (Complete) | $90 a month on a 1-year contract: 200 transactions/mo, 2 registrations/yr, 4 filings/yr. Needed for "Register for me" and automated US filing. | same | [docs](https://support.stripe.com/questions/understanding-stripe-tax-pricing) |
+
+**What we lose per charge** (US account, Tax Basic):
+
+| Charge | Stripe | Paddle (for comparison, all-in including tax compliance) |
 |---|---|---|
-| Creem | ≈ $0.99 | plus payout fees |
-| Stripe direct | ≈ $1.14 | before VAT compliance costs |
-| Paddle | ≈ $1.25 | all-in |
-| Polar | ≈ $1.48 | — |
+| $12 monthly, US card | ≈ $0.79 (6.6%) | ≈ $1.10 (9.2%) |
+| $12 monthly, non-US card with conversion | ≈ $1.09 (9.1%) | ≈ $1.10 (9.2%) |
+| $120 annual, US card | ≈ $5.22 (4.4%) | ≈ $6.50 (5.4%) |
 
-The fixed 40–50¢ hurts low prices: it is 5% of a $10 plan. **Annual plans halve the effective fee.**
+**What the comparison shows:**
+- **Stripe isn't meaningfully cheaper than Paddle at our price** once customers are international. On top of Stripe's fees come registration and filing costs, which Paddle's fee already includes.
+- **The case for Stripe is developer experience, documentation, ecosystem and control** (ADR-000), not price.
+- **Annual plans** cut the fee share on both.
 
-### Getting the money into Bangladesh
-- **Licensed channels:** Bangladesh Bank allows IT-export income under $10k per transaction to come in through licensed payment providers [journalism, TBS, Jan 2025].
-- **Cash incentive:** FY27 incentives are reported at 6% for software/ITES exports and 2.5% for freelancers [journalism, Dhaka Tribune]. That requires the money to arrive through a bank channel that documents it as export income.
-- **Unverified:** how SaaS export income is treated for Bangladesh income tax and VAT. A Bangladeshi tax practitioner should confirm.
+### 9.3 What Stripe Tax does and does not do
 
-## 10. Company setup
+**Does** [docs](https://docs.stripe.com/tax/monitoring), [docs](https://docs.stripe.com/billing/customer/tax-ids), [docs](https://docs.stripe.com/tax/filing):
+- **Calculates and collects** tax on Checkout, invoices and Billing subscriptions.
+- **Monitors thresholds** for Stripe-processed sales.
+  - It excludes our home country.
+  - Alerts start only above about $10k a year in revenue.
+- **Reports and exports** tax data.
+- **Collects and checks customer tax IDs** and applies **reverse charge** for business customers: EU VAT numbers via VIES, UK via HMRC, Australian ABNs via ABR.
+- **"Register for me"** (Tax Complete only) [docs](https://docs.stripe.com/tax/use-stripe-to-register):
+  - US states.
+  - EU **non-Union OSS** via Ireland, for non-EU businesses only [docs](https://docs.stripe.com/tax/use-stripe-to-register/non-union-oss).
+  - Other countries through the partner Taxually.
+- **Filing** is automated for the US through TaxJar (Tax Complete plus a US bank). Elsewhere it goes through partners (Taxually, Marosa, Hands-off Sales Tax) at their own prices.
+
+**Does not:**
+- **Decide where we must register.** Stripe says it's "up to you to confirm".
+- **Register or file by default.** Nor does it remit tax, even after "Register for me".
+- **Verify tax IDs before applying reverse charge.** It applies reverse charge based on a tax ID's *format*, even if the government check fails, so we must handle IDs marked `unverified` ourselves.
+- **Cover every country.** Brazil and Argentina aren't supported.
+- **Take on our liability.** Stripe is a payment processor, not the seller of record. **The legal seller is us.**
+
+### 9.4 Where we'd have to register (B2C digital services)
+
+| Jurisdiction | Threshold for a foreign seller | US LLC | German company | Source |
+|---|---|---|---|---|
+| **EU** | None for non-EU sellers. €10k/yr of cross-border B2C sales for EU-established sellers. | **Non-Union OSS from the first EU sale**, filed quarterly | 19% German VAT (or the Kleinunternehmer small-business exemption: ≤€25k last year and ≤€100k this year). German rate until €10k of cross-border sales, then **Union OSS** | [docs](https://docs.stripe.com/tax/supported-countries/european-union) |
+| **UK** | None: register within 30 days of the first sale | Register | Register | Stripe UK page; HMRC Notice 700/1 |
+| **US** | Per state, mostly $100k (CA/TX/NY $500k). About 14 states plus DC and PR still count **200 transactions**. About 24–26 states tax SaaS; California starts 2027-01-01. | Nexus per state | Same; economic nexus applies to foreign sellers too | [practitioner, Avalara 2026](https://www.avalara.com); [practitioner](https://www.gtlaw.com/ko/insights/2026/7/california-sb-122-cdtfa-workshop-addresses-software-and-saas-tax-rules-effective-jan-1-2027) |
+| Australia | A$75k | same | same | Stripe AU page |
+| Canada | C$30k over 12 months (QST/BC/SK/MB separate) | same | same | canada.ca |
+| India | None: register from the first B2C sale | same | same | Stripe IN page |
+| Switzerland | CHF 100k **worldwide** turnover; needs a fiscal representative | same | same | Stripe CH page |
+| Norway | NOK 50k | VOEC simplified scheme | Direct registration | Stripe NO page |
+| Japan / Singapore / NZ | ¥10M (needs a tax representative) / S$1M global **and** S$100k B2C / NZ$60k | same | same | Stripe APAC pages |
+| Korea, Vietnam, Mexico, Chile, Colombia | None: first sale. Mexico also needs a legal representative. | same | same | Stripe country pages |
+| Malaysia / Thailand / Philippines / Indonesia | RM500k / THB 1.8M / PHP 3M / IDR 600M | same | same | Stripe APAC pages |
+
+**What small SaaS founders do in practice** [practitioner, e-Residency 2026](https://www.e-resident.gov.ee/blog/posts/the-saas-founders-guide-to-eu-vat/):
+- **US LLC:** register for **EU non-Union OSS and UK VAT before the first sale** and monitor everything else.
+- **German company:** German VAT (or Kleinunternehmer), **Union OSS** after €10k, and **UK VAT** from the first UK sale.
+
+**Traps:**
+- **Monthly plans can trigger US nexus early.** Each monthly renewal counts as a transaction, so about 17 monthly subscribers in DC or Hawaii reach the 200-transaction test long before $100k. Stripe won't alert under $10k a year. That's another reason to push annual plans.
+- **Zero-threshold markets** (India, Korea, Mexico, Chile, Colombia, Vietnam) technically need registration from the first sale. A small seller who doesn't register is **choosing to carry a risk**; it is not a safe harbour.
+- **Running a US LLC from Germany after the move** may give it a German place of management, which rules out non-Union OSS and raises German corporate-tax questions.
+
+### 9.5 Stripe Managed Payments: Stripe as merchant of record
+- **Status:** generally available since April 2026 in about 39 business locations, **including the US and Germany**. Bangladesh is not included [docs](https://docs.stripe.com/payments/managed-payments/eligibility), [changelog](https://docs.stripe.com/payments/managed-payments/changelog).
+- **Fee:** **+3.5%** on top of normal processing [docs](https://stripe.com/pricing). Unverified whether Billing's 0.7% also applies.
+- **What Stripe takes on:** it becomes the seller and handles tax in 80+ countries.
+- **Constraints:**
+  - Checkout or Payment Links only.
+  - An eligibility review first.
+  - Customers see "Sold through Link" (`LINK.COM*` on card statements).
+- **Switching:** can be enabled per Checkout Session, but **existing subscriptions are not moved over**, only new ones [docs](https://docs.stripe.com/payments/managed-payments/update-checkout).
+- **Why it matters for us:** once a US or German company exists, this is the cleanest way to stop handling tax ourselves while staying on Stripe. That only works if our integration uses Checkout, so roadmap M4 does.
+
+### 9.6 Getting the money to the founder
+- **US LLC route:** Stripe pays out to the company's US bank account (§10), which then has to reach Bangladesh.
+  - Bangladesh Bank allows IT-export income under $10k per transaction through licensed payment providers [journalism, TBS, Jan 2025].
+  - FY27 cash incentives are reported at 6% (software/ITES) and 2.5% (freelancers), which needs a documented bank channel [journalism, Dhaka Tribune].
+- **German company route:** payouts go to a German business account; no cross-border step.
+
+### 9.7 Considered alternatives: merchants of record (MoR)
+
+**Why we looked at them:**
+- An MoR is the legal seller. It collects and remits sales tax, VAT and GST worldwide and handles chargebacks, for a higher fee and less control over checkout.
+- **Some accept a Bangladesh-based individual with no company**, which Stripe doesn't.
+
+**Providers (checked 2026-10-03):**
+
+| Provider | Fees | Bangladesh seller? | Payouts | Why not now | Source |
+|---|---|---|---|---|---|
+| **Paddle** (documented fallback) | 5% + 50¢, all-in | **Yes on paper**: not on the unsupported list; individuals skip business verification | Wire or Payoneer, monthly, $100 minimum | Less control over checkout and the customer relationship; a smaller ecosystem than Stripe. **Stays the fallback because it's the only strong option that needs no company.** | [pricing](https://www.paddle.com/pricing), [countries](https://www.paddle.com/help/start/intro-to-paddle/which-countries-are-supported-by-paddle) |
+| **Polar** | 5% + 50¢, +1.5% non-US cards, +0.5% subscriptions; $15 per dispute; payout fees | **Listed**, but individual payouts depend on Stripe Connect Express supporting Bangladesh, which is unverified | Stripe Connect Express | Payout path unverified; younger company | [countries](https://polar.sh/docs/merchant-of-record/supported-countries) |
+| **Creem** | 3.9% + 40¢ | **Yes, with caveat** (bank-partner limits) | Local bank or USDC; 7–12 day holds | Newer; restrictions unclear | [countries](https://docs.creem.io/merchant-of-record/supported-countries) |
+| **Lemon Squeezy** | 5% + 50¢ + surcharges | Bank payouts listed | Bank or PayPal | **Winding down** (Jan 2026 post) | [2026 update](https://www.lemonsqueezy.com/blog/2026-update) |
+| **Dodo Payments** | 4% + 40¢ + surcharges | **No** for new accounts since 2026-03-23 | — | Closed to us | [countries](https://docs.dodopayments.com/miscellaneous/accepted-countries-and-territories) |
+| FastSpring, 2Checkout | Quote-based; ~5.9% + 95¢ / ~6% + 60¢ reported | Not blocked on paper; one Bangladesh rejection reported for 2Checkout | — | Opaque pricing, manual review | [FastSpring](https://fastspring.com/terms-use/restricted-countries), [2Checkout](https://docs.2checkout.com) |
+
+**Why none of these now:**
+- **The founder chose Stripe** for developer experience, documentation and ecosystem: test clocks, the CLI, webhooks tooling and the Customer Portal. Stripe is also the de facto standard in SaaS job descriptions.
+- **The price of that choice:**
+  - we need a company before launch
+  - we own tax registration and filing
+- **Both have exits,** recorded in ADR-000:
+  - Stripe Managed Payments once a company exists.
+  - Paddle if company setup stalls.
+
+## 10. Company setup (needed before Stripe goes live)
 
 **Not legal or tax advice.** Professional advice is needed on the points listed at the end of this section.
 
-### Option A: sell as an individual through a merchant of record (MoR), with no company
-- **Who accepts a Bangladesh individual:**
-  - Paddle: individuals and sole traders skip business verification.
-  - Polar and Creem: list Bangladesh, with the caveats in §9.
-  - Dodo: its FAQ says it accepts unregistered individuals, but its country page bars new Bangladesh merchants since 2026-03-23. The country page is the more specific source.
-- **What it costs and saves:**
-  - Fixed cost is about $0 a year. Fees are per sale.
-  - The MoR handles global VAT and sales tax.
-  - It avoids US filing duties and the Bangladesh Bank foreign-entity reporting below.
+- **Why a company is needed:** live Stripe billing needs a company in a Stripe-supported country (§9.1).
+- **Two routes:** a US LLC formed from Bangladesh, or a German company after the move.
+- **When to choose:** at the start of roadmap M5, based on the move date (§10.3).
 
-### Option B: a US LLC (Stripe Atlas, Firstbase, or direct filing)
+### 10.1 Route 1: a US LLC through Stripe Atlas, formed while living in Bangladesh
+
+**Atlas eligibility for a Bangladesh resident (checked 2026-10-04):**
+- **No official Stripe source bars Bangladeshi citizens or residents.**
+  - The Atlas Terms (updated 22 Jul 2025) define "Prohibited Jurisdictions" as only Cuba, Iran, North Korea, Syria and the Crimea region. There is no clause on founder residence or citizenship [docs](https://stripe.com/legal/atlas).
+  - A country list often quoted by third parties ("unavailable to businesses with operations in Afghanistan…Pakistan…Zimbabwe") isn't on any current Stripe page. It seems to come from 2016–17 docs, and Bangladesh isn't on it either [third-party].
+- **No US Social Security number (SSN) is needed.** The company's tax ID (EIN) takes 10–30 business days [docs](https://docs.stripe.com/atlas/signup).
+- **No first-hand 2025–26 reports** from Bangladeshi founders were found. The only success claims come from setup-service sellers [anecdote].
+- **Treat it as "allowed on paper, unproven in practice"** until an application is made.
+
+**Running the US Stripe account from Bangladesh:**
+- **A US-registered company qualifies even if operated abroad.** But Stripe also asks for "the address of the physical location where the majority of your business activity is carried out". Whether a Bangladesh address is accepted there is unverified [docs](https://support.stripe.com/questions/requirements-for-having-a-us-stripe-account).
+- **Representative ID:**
+  - A passport, because residence differs from the account's country [docs](https://docs.stripe.com/acceptable-verification-documents).
+  - The local tax ID (Bangladesh TIN) in place of an SSN or ITIN [docs](https://support.stripe.com/questions/business-rep-owner-tax-id-requirements-for-us-companies).
 
 **Forming one**
 
 | Item | Fact | Source |
 |---|---|---|
-| Stripe Atlas | $500 (Delaware + 1st year of registered agent), then $100/yr for the agent | [docs](https://docs.stripe.com/atlas/signup) |
-| Atlas eligibility | No official country list. Atlas companies came from 169 countries in 2025; third parties say only sanctioned countries are excluded, and Bangladesh isn't one. | [blog](https://stripe.com/blog/stripe-atlas-startups-in-2025-year-in-review) |
-| Atlas ID check | A passport is the only ID accepted when you live outside the account's country | [docs](https://docs.stripe.com/acceptable-verification-documents) |
+| Stripe Atlas | $500 (incorporation, state fees, 1st year of registered agent), then $100/yr. LLC or Delaware C-corp. The $500 is refunded if $5,000 is deposited in Stripe Treasury. | [docs](https://docs.stripe.com/atlas/signup), [atlas](https://stripe.com/atlas) |
 | Firstbase | $99–399 to form; agent $299/yr; non-US tax filing (including Form 5472) $899/yr. Bangladesh not restricted. | [pricing](https://www.firstbase.io/pricing) |
 | Direct Wyoming filing | $100 to form; $60/yr minimum | [third-party](https://www.zenind.com/help/post/wyoming-llc-fees-licenses-and-filing-requirements-2026-guide) |
 
@@ -352,15 +446,18 @@ The fixed 40–50¢ hurts low prices: it is 5% of a $10 plan. **Annual plans hal
 | Delaware LLC tax | **$400/yr** from tax year 2026 | [Delaware](https://corp.delaware.gov/alt-entitytaxinstructions/) |
 | BOI reporting | All US-formed entities exempt (final rule effective 14 Aug 2026) | [FinCEN](https://www.fincen.gov/boi) |
 | US income tax | Generally none without a US trade or business. Proposed 2025 cloud-sourcing rules could change that for SaaS. | [third-party](https://taxnews.ey.com/news/2025-9002) |
+| Sales tax / VAT | EU non-Union OSS and UK VAT from the first sale; others by threshold (§9.4) | §9.4 |
 
-**Banking for a Bangladesh resident**
+**The real blocker is a US bank account.** Stripe pays out to a physical, not virtual, bank account in the company's country [docs](https://support.stripe.com/questions/requirements-to-open-a-stripe-account-in-another-country).
 
-| Option | Status | Source |
+| Option | Status for a Bangladesh-resident owner | Source |
 |---|---|---|
-| Mercury | **Bangladesh is prohibited** (residence-based) | [docs](https://support.mercury.com/hc/en-us/articles/28771710754580) |
-| Wise | No USD account details for a Bangladesh address | [docs](https://wise.com/help/articles/2810318/can-i-get-usd-account-details) |
-| Relay | Bangladesh not listed, but it needs some US operating presence | [docs](https://relayfi.com/hc/en-us/articles/10239600121748-Prohibited-Countries/) |
-| Payoneer | Widely used; ~1% receiving fee | [third-party](https://www.nsave.com/bangladesh/payoneer) |
+| Mercury | **Prohibited** (residence-based); reportedly closing Bangladeshi accounts since Mar 2026 | [docs](https://support.mercury.com/hc/en-us/articles/28771710754580-Prohibited-countries) |
+| Wise Business | **No USD account details** for a Bangladesh address | [docs](https://wise.com/help/articles/2810318) |
+| Brex | Needs $50k minimum cash and a US physical address | [docs](https://brex.com/support/brex-account-requirements) |
+| **Relay** | **Allowed:** Bangladesh isn't on its prohibited list. Card payments through Relay's own invoices are disabled for Bangladeshi owners, which doesn't affect Stripe payouts. Real-world approval is unverified. | [docs](https://relayfi.com/hc/en-us/articles/10239600121748-Prohibited-Countries/), [docs](https://relayfi.com/hc/en-us/articles/38752882026772) |
+| Payoneer | Works for Bangladesh residents, but its receiving accounts can't be debited, so Stripe refunds and negative balances fail. **Fragile.** | [docs](https://payoneer.custhelp.com/app/answers/detail/a_id/18887) |
+| Stripe Treasury (the Atlas perk) | May refuse representatives who don't meet location requirements; unverified for Bangladesh | [docs](https://support.stripe.com/questions/treasury-eligibility-and-onboarding) |
 
 **Bangladesh side** [docs, Bangladesh Bank FEID Circular 02, Mar 2025](https://cdn5.ogrlegal.com/files/forex/feid/mar272025feid02e.pdf):
 - **A resident can now legally own one foreign entity**, remitting up to $10,000 through their bank to set it up.
@@ -368,28 +465,64 @@ The fixed 40–50¢ hurts low prices: it is 5% of a $10 plan. **Annual plans hal
 - **Reporting:** the bank reports to Bangladesh Bank within a month of incorporation, and the owner files **annual audited financial statements** of the foreign company.
 - **Without using this route,** owning a foreign company is unauthorised under the Foreign Exchange Regulation Act 1947.
 
-**Estimated cost:** about $400–1,500 a year plus a foreign audit. The audit cost is unknown.
+**Estimated cost:**
+- Company: about $400–1,500 a year, plus a foreign audit (cost unknown).
+- Tax filing: registration and filing costs (§9.3–9.4).
 
-### Bangladesh tax on the income, either option
-- **The ITES (IT-enabled services) income-tax exemption** covers SaaS and runs **1 Jul 2024 – 30 Jun 2027**. Income must come through banks, and the exemption certificate is renewed yearly [third-party](https://legalseba.com/bd-resources/tax-exemption-for-information-technology-enabled-services-ites-in-bangladesh/).
-- **FY27 cash incentive:** 6% for software/ITES firms, 2.5% for freelancers. These are at risk after Bangladesh leaves least-developed-country (LDC) status on 24 Nov 2026 [journalism](https://thefinancialexpress.com.bd/economy/bangladesh/export-incentives-retained-for-43-sectors-in-fy-27).
-- **Freelancer rules eased in July 2026:** electronic evidence accepted, up to $10k per payment via gateways, and 50% may be kept in a foreign-currency (ERQ) account [journalism](https://www.thedailystar.net/business/news/bangladesh-bank-eases-forex-rules-freelancers-4229851).
-
-### Option C: a German company, after moving
+### 10.2 Route 2: a German UG/GmbH after the move
+- **Stripe fully supports Germany**, including Stripe Tax and Billing (in EUR, 0.7%) [docs](https://stripe.com/global), [docs](https://docs.stripe.com/tax/supported-countries). EEA card fees are lower than on a US account (§9.2).
 - **Forms:**
   - A UG needs €1 minimum capital and a notary; the standard template costs about €240–500.
   - A GmbH needs €25k.
   - A managing director living outside the EU is allowed [docs, §5a GmbHG](https://www.gesetze-im-internet.de/gmbhg/__5a.html); [docs, BMWK](https://www.existenzgruendungsportal.de/Redaktion/DE/BMWK-Infopool/Antworten/Recht/Rechtsformen/UG-haftungsbeschraenkt/Wohnsitz-im-aussereuropaeischen-Ausland-UG-Unternehmergesellschaft-ode.html).
-- **Tax:** about 30% combined corporate and trade tax [docs, GTAI](https://www.gtai.de/en/invest/investment-guide/corporate-taxation-in-germany).
-- **A US LLC becomes awkward after a move to Germany** [third-party, PwC](https://blogs.pwc.de/en/steuern-und-recht/article/228702/):
-  - Germany classifies each LLC case by case, so US and German tax treatment can mismatch.
-  - Managing it from Germany brings it into German tax.
-  - The anti-avoidance (CFC) rules can bite, because the LLC pays about 0% US tax.
+- **Tax:**
+  - About 30% combined corporate and trade tax [docs, GTAI](https://www.gtai.de/en/invest/investment-guide/corporate-taxation-in-germany).
+  - VAT: German VAT or the Kleinunternehmer exemption, Union OSS after €10k of EU cross-border sales, UK VAT from the first UK sale (§9.4).
+- **Side benefits:**
+  - **No US bank problem.**
+  - **No EU GDPR representative needed:** GDPR Art. 3(1) applies instead of 3(2), see §11.
+  - An Impressum (the legal notice German websites must show) is required.
+
+### 10.3 How to choose (decide at the start of M5)
+- **The move to Germany comes before, or soon after, the planned paid launch → German company.** It avoids:
+  - the US bank blocker
+  - Form 5472
+  - Bangladesh Bank foreign-entity audits
+  - an EU representative
+  - the US-LLC-in-Germany tax mismatch [third-party, PwC](https://blogs.pwc.de/en/steuern-und-recht/article/228702/)
+- **Paid launch must happen well before the move → US LLC through Atlas**, under Circular 02, with Relay as the bank (verify first). Plan a restructuring with a German tax adviser (Steuerberater) before moving; running the LLC from Germany may give it a German place of management.
+- **Neither route is ready in time → launch billing on Paddle**, which needs no company (§9.7, §10.4), and revisit later.
+
+### 10.4 Considered: selling as an individual through a merchant of record (no company)
+- **Who accepts a Bangladesh individual:**
+  - Paddle: individuals and sole traders skip business verification.
+  - Polar and Creem: list Bangladesh, with the caveats in §9.7.
+  - Dodo: its country page has barred new Bangladesh merchants since 2026-03-23.
+- **What it would cost and save:**
+  - About $0 a year in fixed costs; fees are per sale.
+  - The MoR handles global VAT and sales tax.
+  - It avoids US filing duties and Bangladesh Bank foreign-entity reporting.
+- **Why not now:** subscription billing is on Stripe (ADR-000). This remains the **fallback path** if company setup stalls.
+
+### Bangladesh tax on the income
+- **The ITES (IT-enabled services) income-tax exemption** covers SaaS and runs **1 Jul 2024 – 30 Jun 2027**. Income must come through banks, and the exemption certificate is renewed yearly [third-party](https://legalseba.com/bd-resources/tax-exemption-for-information-technology-enabled-services-ites-in-bangladesh/).
+  - With a US LLC, the revenue is the company's.
+  - How the founder's draws are treated in Bangladesh is a question for a Bangladeshi tax practitioner.
+- **FY27 cash incentive:** 6% for software/ITES firms, 2.5% for freelancers. These are at risk after Bangladesh leaves least-developed-country (LDC) status on 24 Nov 2026 [journalism](https://thefinancialexpress.com.bd/economy/bangladesh/export-incentives-retained-for-43-sectors-in-fy-27).
+- **Freelancer rules eased in July 2026:** electronic evidence accepted, up to $10k per payment via gateways, and 50% may be kept in a foreign-currency (ERQ) account [journalism](https://www.thedailystar.net/business/news/bangladesh-bank-eases-forex-rules-freelancers-4229851).
 
 ### Get professional advice on
-- **Bangladesh:** whether MoR payouts qualify for the ITES exemption and the cash incentive; the Circular 02 procedure and audit duties if a foreign company is ever formed.
-- **US:** whether SaaS income would be US-taxable under the cloud-sourcing rules (only relevant with a US entity).
-- **Germany:** before any move, how an existing LLC would be classified and taxed.
+- **Bangladesh:**
+  - the Circular 02 procedure and audit duties for a US LLC
+  - how income moved from the LLC to the founder is taxed
+  - the ITES exemption
+- **US:**
+  - Form 5472
+  - whether SaaS income becomes US-taxable under the cloud-sourcing rules
+  - sales-tax nexus as US revenue grows
+- **Germany:**
+  - before the move: classification of any existing LLC, place of management, and the CFC (anti-avoidance) rules
+  - after: Kleinunternehmer vs regular VAT, and Union OSS
 
 ## 11. Legal basics for a global SaaS
 
@@ -432,11 +565,19 @@ The fixed 40–50¢ hurts low prices: it is 5% of a $10 plan. **Annual plans hal
 - **Usage of the new deal CRMs:** real user numbers for Tango, Manage Deals, Guapp and others.
 - **YouTube Creator Partnerships:** whether contracting and payment happen on or off platform. Sources conflict.
 
-**Billing**
-- **Stripe Connect Express** onboarding of Bangladesh *individuals*, which decides whether Polar works for us.
-- **Paddle's Payoneer payouts** and the SWIFT fee for Bangladesh specifically.
-- **Creem's restriction** for Bangladesh.
-- **Portability:** whether subscriber cards can move between MoRs.
+**Billing (Stripe)**
+- **Atlas in practice:** whether the signup accepts a Bangladesh home address, and whether any Bangladeshi founder has been approved or refused in 2025–26. No first-hand reports were found.
+- **Business address:** whether Stripe accepts a Bangladesh "majority of business activity" address on a US account.
+- **US bank:** whether Relay approves Bangladesh residents in practice, and whether Stripe Treasury accepts a representative living in Bangladesh.
+- **Managed Payments fees:** whether Billing's 0.7% applies on top of its 3.5%.
+- **Partner costs:** Taxually registration and filing prices. Third-party estimates only: ~$500 per registration, ~$1,500/yr per jurisdiction.
+- **EU location evidence:** whether Stripe Tax's single-address customer location satisfies the EU's evidence rules for non-EU sellers.
+
+**Billing (merchant-of-record fallback)**
+- **Polar:** Stripe Connect Express onboarding of Bangladesh *individuals*, which decides whether Polar could work for us.
+- **Paddle:** its Payoneer payouts and SWIFT fee for Bangladesh specifically.
+- **Creem:** what its Bangladesh restriction means.
+- **Portability:** whether subscriber cards can move between providers. This is the reason entitlements live in our own DB.
 
 **Legal and tax**
 - **Bangladesh tax and VAT** treatment of SaaS export income.
