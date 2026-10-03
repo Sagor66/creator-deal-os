@@ -15,7 +15,7 @@
 **Where that breaks** (evidence strength in brackets, research §6):
 - **Getting paid** [moderate–strong]: 48–56% of creators report late payments, and some terms stretch to 90–120 days. Chasing is manual, and invoices stall on missing PO numbers, the wrong contact, or tax forms.
 - **Usage rights and exclusivity** [moderate]: brands reuse content beyond what was agreed, 47% of creators report unauthorised use, and nobody tracks when rights expire or when a renewal should be charged.
-- **Cross-border payments** [strong that routes are costly]: PayPal and Stripe don't reach some countries. Small transfers lose about 6.5% on average, and one Bangladeshi freelancer reports losing 40%. Non-US creators are an afterthought in US-built tools.
+- **Cross-border payments** [strong that routes are costly]: PayPal and Stripe don't reach some countries. Small transfers lose about 6.5% on average, and one freelancer without PayPal access reports losing 40%. Non-US creators are an afterthought in US-built tools.
 - **Scattered communication** [moderate]: offers arrive about equally by email and DM, and Instagram had to add a folder so brand messages weren't buried.
 - **Missed deliverables** [anecdotal]: revision churn is documented. Forgetting deadlines is **not** documented and stays an assumption.
 
@@ -67,7 +67,7 @@ Typical length: 2–4 months from first contact to cash [research §1]. Stages 9
 **Where we aim to be different, ordered by evidence:**
 1. **Payment readiness, not just reminders.** Track what a brand needs before it will pay: the accounts-payable contact, PO number, tax form (W-9 or W-8BEN), and when net terms actually start. Record each brand's payment history. Research §7.6 found no tool doing this.
 2. **Usage rights and exclusivity as dated records.** Alert before they expire, and treat expiry as a prompt to charge for renewal. Only 2 small competitors mention it.
-3. **Global by default.** A currency on every deal, free-form payment instructions (Wise, Payoneer, local bank) and no reliance on Stripe or PayPal reaching the creator. Built by a founder in a country those tools don't serve.
+3. **Global by default.** A currency on every deal, free-form payment instructions (Wise, Payoneer, local bank) and no reliance on Stripe or PayPal reaching the creator. US-built tools treat non-US creators as an afterthought.
 4. **We never hold funds.** That is a trust position, given complaints about money held by tools that do [research §7.6].
 5. **Distribution:** the founder is a creator in the niche and has a channel. This is the only advantage that can't be copied in weeks, and it is also unproven (A8).
 
