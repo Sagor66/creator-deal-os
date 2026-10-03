@@ -2,7 +2,17 @@
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "stream",
   "agentGuidance": false,
-  "globalPassThroughEnv": ["NODE_ENV", "PORT", "APP_VERSION", "API_URL"],
+  "globalPassThroughEnv": [
+    "NODE_ENV",
+    "PORT",
+    "APP_VERSION",
+    "API_URL",
+    "DATABASE_URL",
+    "LOG_LEVEL",
+    "LOG_FORMAT",
+    "TRUST_PROXY",
+    "SHUTDOWN_TIMEOUT_MS"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
