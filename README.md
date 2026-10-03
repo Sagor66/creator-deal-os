@@ -66,6 +66,19 @@ Git hooks install themselves on `pnpm install` (Husky):
 
 CI checks the same rules, so skipping the hooks with `--no-verify` doesn't skip the checks.
 
+## CI
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every pull request, on pushes to `main`, and weekly.
+
+| Job | What it checks |
+|---|---|
+| `checks` | Conventional Commits (every commit + PR title), Prettier, workspace boundaries, then `turbo run lint typecheck test build` with the Turborepo cache restored |
+| `dependency-review` | Fails a PR that adds or upgrades to a dependency with a known vulnerability (moderate or worse) |
+| `audit` | `pnpm audit --prod`: no high or critical advisories in anything that ships |
+| `secret-scan` | gitleaks over the PR's commits (all history on `main` and weekly) |
+
+GitHub's own secret scanning, push protection and Dependabot alerts are also on. Dependabot opens weekly update PRs for npm packages and GitHub Actions.
+
 ## License
 
 [Functional Source License 1.1, Apache-2.0 future license (FSL-1.1-ALv2)](LICENSE.md):
