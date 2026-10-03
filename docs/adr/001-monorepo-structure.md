@@ -102,7 +102,7 @@ docs/            product, roadmap, ADRs, design notes, runbooks, devlog
 | Tool | Pin | Reason |
 |---|---|---|
 | Node | **24 LTS** (`.nvmrc` + `engines`) | Move to 26 once it enters LTS |
-| pnpm | **11** via `devEngines.packageManager` | The conservative choice. Move to 12 once `turbo prune` and CI are proven on it. |
+| pnpm | **11**, pinned exactly with the `packageManager` field (read by Corepack and Turborepo) | The conservative choice. Move to 12 once `turbo prune` and CI are proven on it. Switch to `devEngines.packageManager` once Turborepo stops reading `packageManager`. |
 | TypeScript | **6.0.x**, repo-wide, via a pnpm **catalog** | The NestJS CLI and typescript-eslint need it. Move to 7 when 7.1 ships a stable API and the tooling supports it. |
 | Shared libraries (zod, eslint, vitest) | pnpm catalogs | One version across workspaces |
 
@@ -131,6 +131,7 @@ docs/            product, roadmap, ADRs, design notes, runbooks, devlog
 - **ESM-first NestJS** may hit libraries not yet ready for Nest 12 or ESM; `nestjs-zod` is already one. Prefer built-in Nest features, and note the exceptions in PRs.
 - **Every env var has to be listed twice:** in the zod schema and in `turbo.json`. A CI check can compare them later if they drift.
 - **Pinning TypeScript 6 while 7 exists** means we skip TS 7's speed for now.
+- **pnpm 11 refuses packages published less than 24 hours ago** (`minimumReleaseAge`), a supply-chain guard. When a just-released version is blocked, pin the previous one. Don't add exclusions; the scaffold did this with ESLint 10.12.0 → 10.11.0.
 - **`turbo boundaries` is experimental,** so the ESLint rule is what actually enforces boundaries until it's stable.
 
 ## When we'd revisit
