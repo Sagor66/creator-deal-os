@@ -55,6 +55,7 @@ Run these from the repo root. Turborepo runs each task in every workspace and ca
 | `pnpm typecheck` | TypeScript with every strict flag |
 | `pnpm test` | Vitest unit and end-to-end tests |
 | `pnpm format` / `format:check` | Prettier: rewrite, or only verify (Markdown is formatted by hand) |
+| `pnpm check:boundaries` | Fails if a workspace imports another's files by relative path, or uses a package it doesn't declare |
 | `pnpm services:up` / `services:down` | Start or stop the local MySQL and Redis |
 
 ## Commits
