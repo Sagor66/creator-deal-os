@@ -28,7 +28,7 @@ The brief rests on assumptions, not interviews (see "Assumptions to validate" in
 - **Config:** zod-validated env in both apps. The app refuses to start on bad config. `.env.example` is committed.
 - **Database:**
   - MySQL 8 in `docker compose` for local dev.
-  - ORM and migrations (ADR-002).
+  - Drizzle ORM (decided in `CLAUDE.md`) with drizzle-kit migrations; ADR-002 records why.
   - Testcontainers harness so repository tests run against real MySQL.
 - **CI:** GitHub Actions runs lint, typecheck, test and build on every PR.
 - **Basics:**
@@ -111,15 +111,17 @@ The brief rests on assumptions, not interviews (see "Assumptions to validate" in
   - Each brand keeps a record of how late it pays.
 - **Background jobs:** Redis + BullMQ (ADR), for the overdue checks plus due-date reminders and a weekly digest email *to the creator*.
 - **Earnings summary:** paid, outstanding and overdue, shown **per currency**.
-- **Our own billing:**
-  - Behind a `BillingProvider` interface, with an entitlements table driven by webhooks.
-  - Plan limits enforced in the API.
-  - Built against the **Paddle sandbox**.
-  - Free plan: up to 3 active deals. Pro: $12 a month or $120 a year (brief §8).
+- **Our own subscription billing: Stripe, in test mode** ([ADR-000](adr/000-billing-provider.md)):
+  - **Behind a `BillingProvider` interface.** The rest of the app reads our own entitlements table and never calls Stripe directly.
+  - **Stripe Checkout** to upgrade to Pro. The **Stripe Customer Portal** handles plan changes, card updates and cancelling.
+  - **Stripe Tax** with automatic tax on. We collect the customer's billing country and address, and an optional VAT or GST ID for business customers (reverse charge).
+  - **Webhooks** are signature-verified and processed idempotently by event ID; they update the entitlements table.
+  - **Tested with the Stripe CLI** (webhook forwarding) and **test clocks**, which simulate renewals, failed payments and cancellations without waiting a month.
+  - **Plan limits** enforced in the API. Free: up to 3 active deals. Pro: $12 a month or $120 a year (brief §8).
 
 **Exit:**
 - A deal reaches Paid through invoice → sent → payment recorded.
-- A sandbox subscription upgrades and downgrades the workspace's plan through webhooks alone.
+- A test-mode subscription upgrades and downgrades the workspace's plan through webhooks alone, including a failed renewal simulated with a test clock.
 
 ## M5: Private beta
 
@@ -151,16 +153,43 @@ The brief rests on assumptions, not interviews (see "Assumptions to validate" in
   - Email deliverability: SPF, DKIM, DMARC.
   - Secrets in the platform's secret store.
 - **Security pass:** an OWASP Top 10 checklist on the codebase, dependency scanning in CI, and an upload-handling review (contracts arrive from strangers, and malware "contracts" are a known attack on creators).
-- **Billing live:**
-  - Apply for live approval with **Paddle and Creem at the same time**. Both need the live site, pricing, terms and privacy pages.
-  - Confirm the tax treatment with a Bangladeshi tax practitioner before charging anyone.
-  - Beta users get founding-member pricing.
+- **Billing stays in Stripe test mode for the beta:**
+  - Beta users are free.
+  - Creators can accept the founding-member offer in the app; it's charged once live billing starts (see "Pre-launch requirements").
 
 **Exit:**
 - At least 10 beta creators active in each of 3 consecutive weeks.
 - The restore drill has passed once.
 - Legal pages are live.
-- Billing approval has been requested.
+- Every pre-launch requirement below has an owner and a target date.
+
+## Pre-launch requirements (before the first real charge)
+
+We can't take real payments until all of these are done. They are mostly business and legal work, not code, and some take weeks, so they **start during M5, not after it**.
+
+1. **A company registered in a Stripe-supported country.** Stripe doesn't support Bangladesh, so live mode needs a company elsewhere. The options are in brief §8:
+   - a US LLC through Stripe Atlas, or
+   - a German UG/GmbH after the founder's move.
+   - **Decide at the start of M5**, based on the move date.
+2. **A live Stripe account for that company:**
+   - identity verification of the representative
+   - a business bank account that accepts the owner's country of residence
+3. **Tax registrations**, required from the first sale, added in Stripe Tax. Other jurisdictions are monitored against their thresholds (brief §8, research §9).
+   - **US LLC:** EU non-Union OSS and UK VAT.
+   - **German company:** German VAT (or Kleinunternehmer status) and UK VAT, plus Union OSS once EU cross-border sales pass €10k.
+   - **Also decided:** how to handle tax IDs Stripe couldn't verify (it applies reverse charge on format alone), and a written stance on zero-threshold markets such as India, Korea and Mexico.
+4. **A filing process decided:** Stripe's filing partner or an accountant, and how often returns are due.
+5. **Legal:**
+   - A lawyer reviews the terms, DPA and privacy policy.
+   - Appoint an EU and UK representative if the company is outside the EU.
+   - The privacy policy and sub-processor list name the real legal entity.
+6. **Professional tax advice** for the chosen setup:
+   - **US LLC:** Bangladesh Bank's foreign-entity permission and reporting, and the annual Form 5472.
+   - **German company:** a German tax adviser.
+7. **Switching to live:**
+   - Live keys go in the secret store, plus a live webhook endpoint.
+   - Products and prices are recreated in live mode, because test-mode objects don't carry over.
+   - One real end-to-end charge and refund.
 
 ## After the beta (not scheduled)
 
