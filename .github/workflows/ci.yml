@@ -2,6 +2,8 @@ name: CI
 
 on:
   pull_request:
+    # `edited` so fixing a PR title re-runs the title check (a re-run would reuse the old title).
+    types: [opened, synchronize, reopened, edited]
   push:
     branches: [main]
   # Weekly re-check: new advisories and secret rules appear after code is merged.
