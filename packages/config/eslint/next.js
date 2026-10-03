@@ -16,6 +16,8 @@ export function nextConfig(options) {
     { languageOptions: { globals: { ...globals.browser, ...globals.node } } },
     {
       plugins: { "@next/next": nextPlugin },
+      // Tell Next's rules where the app lives, so they work when ESLint runs from the repo root (lint-staged).
+      settings: { next: { rootDir: options.tsconfigRootDir } },
       rules: {
         ...nextPlugin.configs.recommended.rules,
         ...nextPlugin.configs["core-web-vitals"].rules,

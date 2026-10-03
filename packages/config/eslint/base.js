@@ -1,4 +1,5 @@
 import js from "@eslint/js";
+import prettier from "eslint-config-prettier/flat";
 import { defineConfig, globalIgnores } from "eslint/config";
 import tseslint from "typescript-eslint";
 
@@ -11,7 +12,13 @@ import tseslint from "typescript-eslint";
  */
 export function baseConfig({ tsconfigRootDir }) {
   return defineConfig(
-    globalIgnores(["**/dist/**", "**/.next/**", "**/coverage/**", "**/.turbo/**", "**/next-env.d.ts"]),
+    globalIgnores([
+      "**/dist/**",
+      "**/.next/**",
+      "**/coverage/**",
+      "**/.turbo/**",
+      "**/next-env.d.ts",
+    ]),
     js.configs.recommended,
     tseslint.configs.strictTypeChecked,
     tseslint.configs.stylisticTypeChecked,
@@ -25,5 +32,7 @@ export function baseConfig({ tsconfigRootDir }) {
       files: ["**/*.{js,mjs,cjs}"],
       extends: [tseslint.configs.disableTypeChecked],
     },
+    // Last, so it switches off any rule that would fight Prettier's formatting.
+    prettier,
   );
 }
