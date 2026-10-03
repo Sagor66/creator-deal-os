@@ -14,14 +14,16 @@ function respondWith(body: unknown, status = 200): typeof fetch {
 
 describe("getServiceInfo", () => {
   it("returns the parsed info when the API honours the contract", async () => {
-    await expect(getServiceInfo(apiUrl, respondWith(validBody))).resolves.toEqual({
+    await expect(getServiceInfo(apiUrl, { fetchImpl: respondWith(validBody) })).resolves.toEqual({
       ok: true,
       info: validBody,
     });
   });
 
   it("rejects a response that breaks the shared contract", async () => {
-    const result = await getServiceInfo(apiUrl, respondWith({ ...validBody, time: "not a date" }));
+    const result = await getServiceInfo(apiUrl, {
+      fetchImpl: respondWith({ ...validBody, time: "not a date" }),
+    });
     expect(result).toEqual({
       ok: false,
       reason: "API response does not match the shared contract",
@@ -29,7 +31,7 @@ describe("getServiceInfo", () => {
   });
 
   it("reports a non-2xx status", async () => {
-    await expect(getServiceInfo(apiUrl, respondWith({}, 503))).resolves.toEqual({
+    await expect(getServiceInfo(apiUrl, { fetchImpl: respondWith({}, 503) })).resolves.toEqual({
       ok: false,
       reason: "API responded with 503",
     });
@@ -37,9 +39,19 @@ describe("getServiceInfo", () => {
 
   it("reports an unreachable API instead of throwing", async () => {
     const failing: typeof fetch = () => Promise.reject(new TypeError("fetch failed"));
-    await expect(getServiceInfo(apiUrl, failing)).resolves.toEqual({
+    await expect(getServiceInfo(apiUrl, { fetchImpl: failing })).resolves.toEqual({
       ok: false,
       reason: "API unreachable",
     });
+  });
+
+  it("forwards the request ID so the call can be traced in the API's logs", async () => {
+    let sent: string | null = null;
+    const capturing: typeof fetch = (_input, init) => {
+      sent = new Headers(init?.headers).get("x-request-id");
+      return Promise.resolve(Response.json(validBody));
+    };
+    await getServiceInfo(apiUrl, { requestId: "web-12345678", fetchImpl: capturing });
+    expect(sent).toBe("web-12345678");
   });
 });
