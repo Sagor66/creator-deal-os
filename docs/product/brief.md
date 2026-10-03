@@ -90,7 +90,7 @@ The MVP is scoped to roadmap M2–M5. Each feature traces to a problem in §1.
 | **Reminders and a weekly digest** emailed to the creator | Forgotten dates; brings users back |
 | **Earnings per currency:** paid, outstanding, overdue | Multi-currency reality |
 | **CSV import** from a spreadsheet tracker, plus guided onboarding | The incumbent is a spreadsheet; moving off it must be cheap |
-| **Our subscription billing** through a merchant of record, with plan limits | Paying users are a success metric (§9) |
+| **Our subscription billing** through Stripe (test mode until a company is registered), with plan limits | Paying users are a success metric (§10) |
 
 ## 7. Non-goals (MVP)
 
@@ -118,7 +118,10 @@ The MVP is scoped to roadmap M2–M5. Each feature traces to a problem in §1.
 
 ## 8. Pricing, billing and company setup
 
-**Decided 2026-10-04.** Pricing is still a hypothesis that A6 tests. Billing provider and company setup are operating decisions, reviewed at the triggers listed below. Evidence: research §9–10.
+**Decided 2026-10-04.**
+- **Pricing** is a hypothesis that A6 tests.
+- **Billing provider and company setup** are operating decisions, reviewed at the triggers below.
+- **Evidence:** research §9–10. **Decision record:** [ADR-000](../adr/000-billing-provider.md).
 
 ### Pricing hypothesis
 
@@ -126,44 +129,52 @@ The MVP is scoped to roadmap M2–M5. Each feature traces to a problem in §1.
 |---|---|---|
 | **Free** | $0 | Up to **3 active deals** (anything not Paid or Lost), all features |
 | **Pro** | **$12 a month or $120 a year** | Unlimited |
-| Founding member (beta) | Free during beta, then **50% off the first year** | Unlimited |
+| Founding member (beta) | Free during beta, then **50% off the first year** once live billing starts | Unlimited |
 
 **Why these numbers:**
 - **The limit tracks the pain.** The pain grows with *concurrent* deals, so a creator with an occasional deal stays free and becomes word of mouth. The creator juggling several pays.
 - **$12 matches the market.** Comparable tools charge $10–20 a month, and HoneyBook and Dubsado charge $25+ for generic features.
 - **The value case:** at a ~$350 average deal, one recovered late payment or one charged usage-rights renewal pays for the year.
-- **Annual is pushed for a reason.** The billing provider's fixed 50¢ is 9.2% of a $12 monthly charge but 5.4% of an annual one.
+- **Annual is pushed for two reasons:**
+  - **Fees:** Stripe takes about 6.6% of a $12 monthly charge on a US card, and about 9.1% on an international card that needs conversion. On a $120 annual charge it takes about 4.4%.
+  - **US sales tax:** annual billing means fewer transactions toward the US states that count 200 transactions for nexus (research §9.4).
 - **Not yet:**
-  - Prices adjusted by country (our provider supports localised prices). Comes only after the base price is tested, since the beachhead earns enough from deals for $12 to be about 2% of one deal.
+  - Prices adjusted by country (Stripe supports per-currency prices). Comes only after the base price is tested, since the beachhead earns enough from deals for $12 to be about 2% of one deal.
   - A manager or team tier, after the beta (R1 fallback).
 
-### How we charge: merchant of record
-- **Primary: Paddle** (5% + 50¢, all-in).
-  - It is the legal seller and handles VAT, GST and sales tax worldwide.
-  - It accepts Bangladesh-based individuals and pays out by wire or Payoneer.
-- **Fallback: Creem** (3.9% + 40¢). We apply to it at the same time in M5, because approval is never guaranteed (R6).
-- **Not chosen:**
-  - **Stripe direct:** unavailable to Bangladesh residents, and it would leave us registering and filing VAT ourselves.
-  - **Dodo:** closed to new Bangladesh sellers since 2026-03-23.
-  - **Lemon Squeezy:** winding down.
-  - **Polar:** Bangladesh payouts depend on an unverified Stripe Connect path.
-- **Keeping the exit open.** Our code depends on a `BillingProvider` interface plus our own entitlements table, updated by webhooks. Switching providers (e.g. to Stripe once a company exists) is a contained change. The interface goes in M4 with an ADR.
+### How we charge: Stripe Billing + Stripe Tax
+- **Stripe Billing**, with Checkout to subscribe and the Customer Portal to change plan, update cards or cancel.
+  - **Built in test mode now** (roadmap M4).
+  - **Live** once a company exists (below).
+- **Why Stripe:** the best developer experience, documentation and ecosystem: test clocks to simulate renewals, the CLI to forward webhooks, the hosted Customer Portal, and the standard in SaaS.
+  - **Honest note: it isn't cheaper at our price.** On an international card a $12 charge costs ≈ $1.09 on Stripe vs ≈ $1.10 on Paddle, and Paddle's fee already includes tax compliance (research §9.2).
+- **Stripe is not a merchant of record. We are the legal seller.**
+  - **Stripe Tax** calculates and collects tax, validates customers' tax IDs and applies reverse charge for businesses, and monitors thresholds.
+  - **Registering, filing and the liability stay with us** (R11).
+  - **Registered before the first sale:**
+    - With a US LLC: **EU non-Union OSS + UK VAT**.
+    - With a German company: **German VAT** (or the Kleinunternehmer small-business exemption) **+ UK VAT**, and Union OSS after €10k of EU cross-border sales.
+  - **Monitored:** US states, Australia, Canada and the rest by threshold.
+  - **A conscious, documented risk:** zero-threshold markets (India, Korea, Mexico and others) technically need registration from the first sale (research §9.4).
+- **Exits, kept open on purpose:**
+  - **Swappable provider.** Our code depends on a `BillingProvider` interface plus our own entitlements table, updated by webhooks, so swapping providers is a contained change.
+  - **Stripe Managed Payments** (Stripe as merchant of record, +3.5%, available to US and German companies) is the way to hand tax back without leaving Stripe. It requires Stripe Checkout, which is why M4 uses Checkout.
+  - **Paddle** is the documented fallback if company setup stalls, because it accepts individuals with no company (research §9.7).
+- **Brand-to-creator payments are not processed** (unchanged, §7). Invoices carry the creator's own payment details; we track status and chase.
 
-### Company setup: none yet
-- **Sell as an individual** through the merchant of record.
-- **Take payouts into a Bangladeshi bank,** ideally a foreign-currency (ERQ) account, so the money is documented as IT-services export income.
-- **Claim the IT-services tax exemption**, which runs to 30 Jun 2027.
-- **Why not a US LLC now:**
-  - $400–1,500 a year in fixed cost.
-  - A $25k penalty risk on the annual IRS Form 5472.
-  - Mercury blocks Bangladesh residents.
-  - Bangladesh Bank requires annual audited accounts for a foreign entity.
-  - It becomes awkward under German tax after a move.
-- **Revisit when any of these happens:**
-  1. Paddle and Creem both reject us.
-  2. Revenue reaches roughly $5–10k a month, where Stripe direct saves real money.
-  3. The founder moves to Germany. Then register as a freelancer or sole trader, and later a UG.
-- **Before charging the first customer:** get a Bangladeshi tax practitioner to confirm that merchant-of-record payouts qualify for the exemption.
+### Company setup: none yet, required before live billing
+- **Now:** no company. Everything billing-related runs in Stripe test mode.
+- **Before the first real charge:** a company in a Stripe-supported country (roadmap "Pre-launch requirements", R6). Two routes (research §10):
+  1. **A US LLC through Stripe Atlas**, formed from Bangladesh under Bangladesh Bank's foreign-entity route (Circular 02).
+     - **Atlas eligibility, checked 2026-10-04:** no Stripe source bars Bangladeshi residents. The Atlas Terms exclude only Cuba, Iran, North Korea, Syria and Crimea. No first-hand Bangladeshi outcomes were found, so it's unproven in practice.
+     - **The real blocker is a US bank.** Mercury and Wise exclude Bangladesh residents. Relay is the documented option.
+     - **Cost:** about $400–1,500 a year plus a foreign audit, and the annual Form 5472.
+  2. **A German UG or GmbH** after the move: no US bank problem, no US filings, no EU GDPR representative, and lower EEA card fees.
+- **Decide at the start of M5, by the move date:**
+  - **Move before or near paid launch:** German company.
+  - **Launch well before the move:** US LLC, restructured with a German tax adviser before moving.
+  - **Neither ready in time:** Paddle.
+- **Before the first charge, get professional tax advice** for the chosen route.
 
 ## 9. Go-to-market
 
@@ -191,7 +202,7 @@ The MVP is scoped to roadmap M2–M5. Each feature traces to a problem in §1.
 | Activation rate (of sign-ups) | ≥ 60% (hand-onboarded) | ≥ 35% (self-serve) |
 | Week-4 retention (of activated) | ≥ 50% | ≥ 40% |
 | Week-8 retention (of activated) | ≥ 40% | ≥ 30% |
-| Paying users | ≥ 30% of active beta creators take the founding offer | 25+ paying workspaces; free → paid ≥ 5% of activated |
+| Paying users | ≥ 30% of active beta creators accept the founding offer (charged once live billing starts) | 25+ paying workspaces; free → paid ≥ 5% of activated |
 | Value signal | ≥ 1 creator reports an invoice paid or a renewal charged *because of* a reminder | Invoices marked paid each month keeps rising |
 
 **These are guesses to beat, not benchmarks.** They get revised after the first beta cohort.
@@ -205,11 +216,12 @@ The MVP is scoped to roadmap M2–M5. Each feature traces to a problem in §1.
 | R3 | **Founder has never done a brand deal** | Certain | Interviews before M4; a talent-manager advisor; concierge onboarding; the brief stays a hypothesis |
 | R4 | **Manual entry kills adoption** (records live in inboxes and portals) | Medium–high | Fast quick-add, CSV import, sensible defaults; forward-to-app email intake post-beta |
 | R5 | **Low willingness to pay** at small-creator incomes, globally | Medium–high | Price against one recovered payment; annual plans; test the price before building billing UI (A6) |
-| R6 | **Billing provider rejects a Bangladesh individual seller** | Medium | Apply to the primary and a fallback in parallel during M5; keep billing behind an interface |
+| R6 | **A company must be registered in a Stripe-supported country before launch.** Stripe doesn't support Bangladesh, so live billing is blocked until a US LLC or German company exists. Formation, banking and permissions can take weeks. | Certain requirement; medium risk of delay | Start during M5 (roadmap "Pre-launch requirements"); choose the US or German route by the move date (§8); Paddle is the documented fallback, since it accepts individuals with no company, and the `BillingProvider` interface makes the swap contained |
 | R7 | **A breach of contracts or finances** ends trust permanently | Low–medium, high impact | Tenant-isolation test suite (M2); private storage with signed URLs; backups with restore drills; upload restrictions |
 | R8 | **Compliance burden:** GDPR representatives, DPA, Bangladesh PDPA data-residency rules | Medium | Legal checklist in research §11; generator now, lawyer before paid launch |
 | R9 | **Malware "contracts"** uploaded as attachments | Medium | PDF and image only, size limits, private storage, no server-side rendering of untrusted files in the MVP |
 | R10 | **Solo-founder scope creep** delays the beta | High | Non-goals in §7; milestone exit checks; the M4 decision gate |
+| R11 | **Global tax is our responsibility.** Stripe is not a merchant of record: Stripe Tax calculates and collects, but **registering and filing** (and the liability) stay with us | Certain obligation; medium impact | Register where required before the first sale; let Stripe Tax monitor thresholds elsewhere; use a filing partner or an accountant; revisit Stripe's own merchant-of-record option (Managed Payments) or the Paddle fallback if filing gets too heavy (§8, ADR-000) |
 
 ## 12. Assumptions to validate
 
@@ -227,4 +239,4 @@ The MVP is scoped to roadmap M2–M5. Each feature traces to a problem in §1.
 | A8 | The **founder's channel and network** can fill a 20-person beta | None | One devlog post and a waitlist link; count sign-ups | Under 50 waitlist sign-ups → a different distribution plan is needed before M5 |
 | A9 | **Fitness/lifestyle** generalises to other niches and formats | Plausible (same lifecycle, research §3) | Beta users from 1–2 adjacent niches | Workflows diverge → stay niche longer |
 | A10 | Creators **trust a new tool** with contracts and earnings | Unknown | Ask in interviews; watch whether beta users upload contracts | Low upload rate → reconsider the trust messaging or a lighter "terms only" mode |
-| A11 | **Paddle or Creem approves** a Bangladesh-based individual seller | Docs say yes; no first-hand reports | Apply to both as soon as the legal pages are live (M5) | Both reject → form a company earlier (§8) |
+| A11 | A **company in a Stripe-supported country** can be set up before paid launch, at acceptable cost and time | See §8 and research §10 | Start the chosen route at the beginning of M5 | Blocked or too slow → launch billing on Paddle (the fallback) through the `BillingProvider` interface |
