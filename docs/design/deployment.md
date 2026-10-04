@@ -57,6 +57,9 @@
 - Node is PID 1 (`ENTRYPOINT ["/nodejs/bin/node"]`).
 - Both apps install their own SIGTERM handlers: Nest's `enableShutdownHooks`, and Next's standalone server.
 - So nothing like `tini` is needed: no child processes are spawned and none need reaping.
+- **Verified locally with `docker stop`:**
+  - The api drains, logs "shutdown complete" and exits 0 within about 1 s.
+  - The web server exits at once with 143, the signal code; Next exits on SIGTERM. It never waits out the 10 s kill.
 
 **`.dockerignore`** excludes:
 - `node_modules`, `dist`, `.next` and `.turbo`
@@ -142,6 +145,7 @@ Dropping an index, key, foreign key or check isn't data loss, so it isn't flagge
 - **The job runs only if CI succeeded *and* was a `push` in *this* repository.**
   - `workflow_run`'s branch filter matches the *head branch name*, so a fork's PR from a branch called `main` would otherwise trigger it.
 - `workflow_dispatch` with an optional `ref` (a commit on `main`), used to redeploy or roll back.
+- **Switched off until setup is done:** the repository variable `DEPLOY_ENABLED=true` gates both. Without it, a merge to `main` would produce a failed deploy every time until the cloud accounts exist.
 
 **Concurrency:**
 - Group `deploy`, `cancel-in-progress: false`: a deploy is never cut off halfway.

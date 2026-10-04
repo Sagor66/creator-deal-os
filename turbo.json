@@ -8,6 +8,8 @@
     "APP_VERSION",
     "API_URL",
     "DATABASE_URL",
+    "DATABASE_TLS",
+    "DATABASE_CA_CERT",
     "LOG_LEVEL",
     "LOG_FORMAT",
     "TRUST_PROXY",
