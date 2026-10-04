@@ -1,0 +1,30 @@
+# The build context for apps/*/Dockerfile is the repo root. Keep it small, and
+# make sure no local secret can ever reach an image (docs/design/deployment.md §1).
+
+# Secrets: every env file, including .env.example (images never read env files).
+**/.env
+**/.env.*
+
+# Installed and built output: the image installs and builds for itself.
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+**/coverage
+**/*.tsbuildinfo
+**/*.log
+
+# Not needed to build either app.
+.git
+.github
+.husky
+.notes
+.vscode
+.idea
+docs
+infra
+scripts
+compose.yaml
+**/Dockerfile
+.dockerignore
+**/.DS_Store
