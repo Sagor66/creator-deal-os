@@ -30,3 +30,18 @@ updates:
     commit-message:
       prefix: ci
     labels: [infra]
+
+  # Base images in apps/*/Dockerfile are pinned by digest; this proposes bumps.
+  - package-ecosystem: docker
+    directories: ["/apps/api", "/apps/web"]
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 3
+    groups:
+      base-images:
+        patterns: ["*"]
+    commit-message:
+      prefix: build
+    labels: [infra]

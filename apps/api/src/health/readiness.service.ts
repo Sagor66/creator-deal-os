@@ -1,15 +1,12 @@
+import type { CheckResult, ReadinessReport } from "@cdo/schemas";
 import { Inject, Injectable } from "@nestjs/common";
 import { LOGGER, type AppLogger } from "../logging/logger.js";
 import { ShutdownService } from "../shutdown/shutdown.service.js";
 import { CHECK_TIMEOUT_MS, HEALTH_INDICATORS, type HealthIndicator } from "./health-indicator.js";
 
-export type CheckResult =
-  { status: "up"; durationMs: number } | { status: "down"; durationMs: number; error: string };
-
-export interface ReadinessReport {
-  status: "ready" | "not_ready" | "shutting_down";
-  checks: Record<string, CheckResult>;
-}
+// The report's shape is the shared contract in @cdo/schemas: the web app and the
+// deploy smoke test read it too.
+export type { CheckResult, ReadinessReport };
 
 class CheckTimeoutError extends Error {
   readonly code = "timeout";

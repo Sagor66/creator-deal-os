@@ -1,22 +1,9 @@
 import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { AppModule } from "./app.module.js";
-import { EnvValidationError, loadEnv, type Env } from "./config/env.js";
+import { loadEnvOrExit } from "./config/env.js";
 import { createLogger } from "./logging/logger.js";
 import { PinoNestLogger } from "./logging/nest-logger.js";
-
-function loadEnvOrExit(): Env {
-  try {
-    return loadEnv();
-  } catch (error) {
-    if (error instanceof EnvValidationError) {
-      // Before the logger exists: plain text on stderr, then stop. Values are never printed.
-      process.stderr.write(`${error.message}\n`);
-      process.exit(1);
-    }
-    throw error;
-  }
-}
 
 const env = loadEnvOrExit();
 const logger = createLogger(env);

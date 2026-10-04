@@ -38,7 +38,9 @@ apps/web            Next.js 16 App Router, Tailwind 4, shadcn/ui, TanStack Query
 packages/schemas    zod contracts shared by api and web (compiled ESM package)
 packages/config     shared tsconfig bases and ESLint flat configs
 compose.yaml        local MySQL 8.4 and Redis
-docs/               product, roadmap, ADRs
+infra/              Cloud Run manifests, deploy script, one-time GCP setup
+scripts/            smoke test used after every deploy
+docs/               product, roadmap, ADRs, design notes, runbooks
 ```
 
 The structure and its rules are explained in [ADR-001](docs/adr/001-monorepo-structure.md).
@@ -57,6 +59,7 @@ Run these from the repo root. Turborepo runs each task in every workspace and ca
 | `pnpm format` / `format:check` | Prettier: rewrite, or only verify (Markdown is formatted by hand) |
 | `pnpm check:boundaries` | Fails if a workspace imports another's files by relative path, or uses a package it doesn't declare |
 | `pnpm services:up` / `services:down` | Start or stop the local MySQL and Redis |
+| `pnpm --filter @cdo/api db:migrate` | Apply pending migrations to the database in `.env` (build the API first) |
 
 ## Commits
 
@@ -76,8 +79,21 @@ CI checks the same rules, so skipping the hooks with `--no-verify` doesn't skip 
 | `dependency-review` | Fails a PR that adds or upgrades to a dependency with a known vulnerability (moderate or worse) |
 | `audit` | `pnpm audit --prod`: no high or critical advisories in anything that ships |
 | `secret-scan` | gitleaks over the PR's commits (all history on `main` and weekly) |
+| `images` | Builds both Docker images, then runs them against MySQL 8.4: the migrate job, the api, the web app, and the deploy smoke test |
 
-GitHub's own secret scanning, push protection and Dependabot alerts are also on. Dependabot opens weekly update PRs for npm packages and GitHub Actions.
+GitHub's own secret scanning, push protection and Dependabot alerts are also on. Dependabot opens weekly update PRs for npm packages, GitHub Actions and the Docker base images.
+
+## Deploy
+
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml): a merge to `main` that passes CI deploys to **staging** automatically. **Production** waits for a manual approval, then runs the same image digests. Both run on Google Cloud Run, with MySQL on Aiven, in the EU.
+- **Why this hosting:** [ADR-005](docs/adr/005-hosting-and-environments.md).
+- **How the pipeline works:** [design note](docs/design/deployment.md).
+- **First-time setup, rollback, secrets:** [runbook](docs/runbooks/deploy-and-rollback.md).
+
+```sh
+pnpm --filter @cdo/api build && pnpm --filter @cdo/api db:migrate   # apply migrations to the local database
+docker build -f apps/api/Dockerfile -t cdo-api .                     # build an image from the repo root
+```
 
 ## License
 

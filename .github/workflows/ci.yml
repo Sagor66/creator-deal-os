@@ -139,3 +139,106 @@ jobs:
           else
             gitleaks git --redact --no-banner --exit-code 1 .
           fi
+
+  # Builds both deploy images and runs them the way Cloud Run will: the migrate
+  # job, then the api (as the DML-only user), then web, then the deploy smoke
+  # test. Catches Dockerfile, migration and wiring breaks before merge.
+  images:
+    name: images
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          # Throwaway database on the runner; nothing real ever lives here.
+          MYSQL_ROOT_PASSWORD: ci-throwaway-root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -pci-throwaway-root"
+          --health-interval 5s --health-timeout 5s --health-retries 30
+    env:
+      VERSION: ci-${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # Same cache scopes as the deploy workflow, so deploys reuse these layers.
+      - name: Build the api image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: cdo-api:ci
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
+
+      - name: Build the web image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: cdo-web:ci
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,scope=web,mode=max
+
+      - name: Images run as a non-root user
+        run: |
+          for image in cdo-api:ci cdo-web:ci; do
+            user="$(docker inspect --format '{{.Config.User}}' "$image")"
+            if [[ -z "$user" || "$user" == root || "$user" == 0 ]]; then
+              echo "::error::$image runs as '${user:-root}'"
+              exit 1
+            fi
+            echo "$image runs as $user"
+          done
+          docker image ls --format '{{.Repository}}:{{.Tag}} {{.Size}}' | grep ':ci ' | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Create the least-privilege database users deployed environments use
+        run: |
+          docker run --rm --network host mysql:8.4 \
+            mysql -h 127.0.0.1 -uroot -pci-throwaway-root -e "
+              CREATE DATABASE creator_deal_os CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+              CREATE USER 'cdo_migrator'@'%' IDENTIFIED BY 'ci-throwaway-migrator';
+              GRANT ALL PRIVILEGES ON creator_deal_os.* TO 'cdo_migrator'@'%';
+              CREATE USER 'cdo_app'@'%' IDENTIFIED BY 'ci-throwaway-app';
+              GRANT SELECT, INSERT, UPDATE, DELETE ON creator_deal_os.* TO 'cdo_app'@'%';"
+
+      - name: Run the migrate job (twice, to prove it is idempotent)
+        run: |
+          for attempt in first second; do
+            echo "migrate: $attempt run"
+            docker run --rm --network host -e APP_VERSION="$VERSION" -e DATABASE_TLS=off \
+              -e DATABASE_URL=mysql://cdo_migrator:ci-throwaway-migrator@127.0.0.1:3306/creator_deal_os \
+              cdo-api:ci dist/database/migrate.js
+          done
+
+      - name: Start api and web, then run the deploy smoke test against them
+        run: |
+          docker run -d --name api --network host -e PORT=8080 -e APP_VERSION="$VERSION" \
+            -e DATABASE_TLS=off \
+            -e DATABASE_URL=mysql://cdo_app:ci-throwaway-app@127.0.0.1:3306/creator_deal_os \
+            cdo-api:ci
+          docker run -d --name web --network host -e PORT=3000 -e API_URL=http://127.0.0.1:8080 cdo-web:ci
+          scripts/smoke-test.sh http://127.0.0.1:3000 http://127.0.0.1:8080 "$VERSION"
+
+      - name: The api shuts down gracefully on SIGTERM (exit 0)
+        run: |
+          docker stop --time 10 api
+          code="$(docker inspect --format '{{.State.ExitCode}}' api)"
+          docker logs api 2>&1 | grep -q '"msg":"shutdown complete"'
+          [[ "$code" == 0 ]] || { echo "::error::api exited $code"; exit 1; }
+
+      - name: Container logs
+        if: failure()
+        run: |
+          docker logs api || true
+          docker logs web || true

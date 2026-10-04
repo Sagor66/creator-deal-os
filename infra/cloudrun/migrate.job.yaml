@@ -1,0 +1,44 @@
+# Cloud Run job: migrate. Same image as the api, different argument and a
+# different database user (DDL rights; the api's user has DML only).
+# Rendered, updated and executed by infra/cloudrun/deploy.sh before the api deploys.
+# Design: docs/design/deployment.md §3.
+apiVersion: run.googleapis.com/v1
+kind: Job
+metadata:
+  name: migrate
+  labels:
+    cloud.googleapis.com/location: "${REGION}"
+spec:
+  template:
+    spec:
+      taskCount: 1
+      parallelism: 1
+      template:
+        spec:
+          serviceAccountName: "migrate-runtime@${PROJECT_ID}.iam.gserviceaccount.com"
+          # A failed migration is investigated, never retried blindly (MySQL DDL isn't transactional).
+          maxRetries: 0
+          timeoutSeconds: 300
+          containers:
+            - name: migrate
+              image: "${API_IMAGE}"
+              args: ["dist/database/migrate.js"]
+              env:
+                - name: NODE_ENV
+                  value: production
+                - name: APP_VERSION
+                  value: "${APP_VERSION}"
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: migrate-database-url
+                      key: latest
+                - name: DATABASE_CA_CERT
+                  valueFrom:
+                    secretKeyRef:
+                      name: database-ca-cert
+                      key: latest
+              resources:
+                limits:
+                  cpu: "1"
+                  memory: 512Mi
