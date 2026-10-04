@@ -1,0 +1,10 @@
+{
+  "extends": "@cdo/config/tsconfig/node.json",
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "rootDir": ".",
+    "outDir": "dist"
+  },
+  "include": ["src", "test", "vitest.config.ts"]
+}

@@ -48,3 +48,6 @@ Thumbs.db
 # Misc
 .vercel/
 .cache/
+
+# Next.js
+next-env.d.ts
