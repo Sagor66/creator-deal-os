@@ -3,6 +3,7 @@ import { createPool, type Pool } from "mysql2/promise";
 import { ENV, type Env } from "../config/env.js";
 import { LOGGER, type AppLogger } from "../logging/logger.js";
 import { ShutdownService } from "../shutdown/shutdown.service.js";
+import { buildConnectionOptions } from "./connection-options.js";
 
 /** DI token for the shared mysql2 pool. Drizzle will wrap this same pool (ADR-002). */
 export const MYSQL_POOL = Symbol("MYSQL_POOL");
@@ -45,13 +46,7 @@ class PoolLifecycle implements OnApplicationShutdown {
       // Lazy: no connection is opened until the first query, so the API starts
       // (live, not ready) even while MySQL is down.
       useFactory: (env: Env): Pool =>
-        createPool({
-          uri: env.DATABASE_URL,
-          connectionLimit: 10,
-          connectTimeout: 2_000,
-          enableKeepAlive: true,
-          timezone: "Z",
-        }),
+        createPool({ ...buildConnectionOptions(env), connectionLimit: 10 }),
     },
     PoolLifecycle,
   ],

@@ -15,6 +15,13 @@ function isMysqlUrl(value: string): boolean {
   return url.protocol === "mysql:" && url.hostname !== "" && url.pathname.length > 1;
 }
 
+const PEM_CERTIFICATE = /-----BEGIN CERTIFICATE-----[\s\S]+-----END CERTIFICATE-----/;
+
+/** Some secret stores flatten a PEM's newlines to a literal "\n"; put them back. */
+function restoreNewlines(value: string): string {
+  return value.includes("\n") ? value : value.replaceAll("\\n", "\n");
+}
+
 const EnvSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -28,12 +35,32 @@ const EnvSchema = z
     // z.coerce.boolean() would turn "false" into true; stringbool parses it properly.
     TRUST_PROXY: z.stringbool().default(false),
     SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(60_000).default(10_000),
+    // TLS to MySQL (docs/design/deployment.md §2). There is deliberately no
+    // "encrypt but don't verify" mode: it gives no protection against interception.
+    DATABASE_TLS: z.enum(["off", "verify"]).optional(),
+    // The CA that signed the server's certificate (Aiven uses a per-project CA).
+    DATABASE_CA_CERT: z
+      .string()
+      .transform(restoreNewlines)
+      .refine((value) => PEM_CERTIFICATE.test(value), "must be a PEM certificate")
+      .optional(),
   })
   .transform((env) => ({
     ...env,
     LOG_LEVEL: env.LOG_LEVEL ?? DEFAULT_LOG_LEVEL[env.NODE_ENV],
     LOG_FORMAT: env.LOG_FORMAT ?? (env.NODE_ENV === "development" ? "pretty" : "json"),
-  }));
+    // Secure by default where it matters: production verifies unless told otherwise.
+    DATABASE_TLS: env.DATABASE_TLS ?? (env.NODE_ENV === "production" ? "verify" : "off"),
+  }))
+  .superRefine((env, ctx) => {
+    if (env.DATABASE_CA_CERT !== undefined && env.DATABASE_TLS === "off") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["DATABASE_CA_CERT"],
+        message: "is set, but DATABASE_TLS is off; set DATABASE_TLS=verify or remove it",
+      });
+    }
+  });
 
 export type Env = z.output<typeof EnvSchema>;
 
@@ -64,4 +91,18 @@ export function loadEnv(source: Record<string, string | undefined> = process.env
     return `${key}: ${missing ? "required" : issue.message}`;
   });
   throw new EnvValidationError(problems);
+}
+
+/** For process entrypoints: print every problem (never the values) and exit 1. */
+export function loadEnvOrExit(): Env {
+  try {
+    return loadEnv();
+  } catch (error) {
+    if (error instanceof EnvValidationError) {
+      // Before any logger exists: plain text on stderr, then stop.
+      process.stderr.write(`${error.message}\n`);
+      process.exit(1);
+    }
+    throw error;
+  }
 }

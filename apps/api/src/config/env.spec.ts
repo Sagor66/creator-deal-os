@@ -24,6 +24,7 @@ describe("loadEnv", () => {
       LOG_FORMAT: "pretty",
       TRUST_PROXY: false,
       SHUTDOWN_TIMEOUT_MS: 10_000,
+      DATABASE_TLS: "off",
     });
   });
 
@@ -87,5 +88,46 @@ describe("loadEnv", () => {
     const message = (error as EnvValidationError).message;
     expect(message).not.toContain(secret);
     expect(message).not.toContain("12345678");
+  });
+
+  describe("database TLS", () => {
+    const CA = "-----BEGIN CERTIFICATE-----\nMIIBszCCAVmgAwIBAgIU\n-----END CERTIFICATE-----";
+
+    it("verifies by default in production and is off by default elsewhere", () => {
+      expect(loadEnv({ ...valid, NODE_ENV: "production" }).DATABASE_TLS).toBe("verify");
+      expect(loadEnv(valid).DATABASE_TLS).toBe("off");
+      expect(loadEnv({ ...valid, NODE_ENV: "test" }).DATABASE_TLS).toBe("off");
+    });
+
+    it("allows production to opt out explicitly (the CI container smoke test does)", () => {
+      expect(loadEnv({ ...valid, NODE_ENV: "production", DATABASE_TLS: "off" }).DATABASE_TLS).toBe(
+        "off",
+      );
+    });
+
+    it("has no 'encrypt without verifying' mode", () => {
+      expect(problemsOf({ ...valid, DATABASE_TLS: "require" })).toEqual([
+        expect.stringMatching(/^DATABASE_TLS: /) as unknown,
+      ]);
+    });
+
+    it("accepts a PEM CA, restoring newlines a secret store flattened to \\n", () => {
+      const flattened = CA.replaceAll("\n", "\\n");
+      expect(
+        loadEnv({ ...valid, DATABASE_TLS: "verify", DATABASE_CA_CERT: flattened }).DATABASE_CA_CERT,
+      ).toBe(CA);
+    });
+
+    it("rejects a CA that isn't a PEM certificate", () => {
+      expect(
+        problemsOf({ ...valid, DATABASE_TLS: "verify", DATABASE_CA_CERT: "not a cert" }),
+      ).toEqual(["DATABASE_CA_CERT: must be a PEM certificate"]);
+    });
+
+    it("rejects a CA when TLS is off, since it would be silently ignored", () => {
+      expect(problemsOf({ ...valid, DATABASE_CA_CERT: CA })).toEqual([
+        "DATABASE_CA_CERT: is set, but DATABASE_TLS is off; set DATABASE_TLS=verify or remove it",
+      ]);
+    });
   });
 });
