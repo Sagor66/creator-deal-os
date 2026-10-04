@@ -13,3 +13,9 @@ catalog:
 
 # Exact versions on `pnpm add`; upgrades are deliberate PRs, never drift.
 savePrefix: ""
+
+# pnpm 11 runs no dependency install scripts unless they're listed here.
+# @sentry/cli's postinstall only downloads the binary when its per-platform
+# optional package is missing; those packages ship the binary, so it stays off.
+allowBuilds:
+  "@sentry/cli": false
