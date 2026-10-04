@@ -5,7 +5,7 @@ packages:
 # One version of each shared tool across every workspace (ADR-001).
 # A package opts in with "<name>": "catalog:" in its package.json.
 catalog:
-  "@types/node": 24.19.1
+  "@types/node": 26.6.3
   eslint: 10.11.0
   typescript: 6.0.3
   vitest: 4.1.11
