@@ -7,7 +7,7 @@
 import { fileURLToPath } from "node:url";
 import { drizzle } from "drizzle-orm/mysql2";
 import { migrate } from "drizzle-orm/mysql2/migrator";
-import { createConnection } from "mysql2/promise";
+import { createConnection, type Connection } from "mysql2/promise";
 import { loadEnvOrExit } from "../config/env.js";
 import { createLogger } from "../logging/logger.js";
 import { buildConnectionOptions } from "./connection-options.js";
@@ -21,15 +21,15 @@ const env = loadEnvOrExit();
 const logger = createLogger(env).child({ job: "migrate" });
 
 // One connection, so the advisory lock and the migrations share a session.
-// A cold free-tier database can take a while to answer the first time.
-const connection = await createConnection(
-  buildConnectionOptions(env, { connectTimeoutMs: 20_000 }),
-);
-
+let connection: Connection | undefined;
 try {
+  // Inside the try: a refused connection (e.g. TLS verification) is logged like any failure.
+  // A cold free-tier database can take a while to answer the first time.
+  const client = await createConnection(buildConnectionOptions(env, { connectTimeoutMs: 20_000 }));
+  connection = client;
   await runMigrations({
-    connection,
-    applyMigrations: () => migrate(drizzle({ client: connection }), { migrationsFolder }),
+    connection: client,
+    applyMigrations: () => migrate(drizzle({ client }), { migrationsFolder }),
     checkSafety: () => checkMigrationsFolder(migrationsFolder),
     logger,
   });
@@ -37,7 +37,7 @@ try {
   logger.fatal({ err: error }, "migration failed; nothing new will be deployed");
   process.exitCode = 1;
 } finally {
-  await connection.end().catch((error: unknown) => {
+  await connection?.end().catch((error: unknown) => {
     logger.warn({ err: error }, "migration connection did not close cleanly");
   });
 }
