@@ -1,0 +1,15 @@
+packages:
+  - apps/*
+  - packages/*
+
+# One version of each shared tool across every workspace (ADR-001).
+# A package opts in with "<name>": "catalog:" in its package.json.
+catalog:
+  "@types/node": 24.19.1
+  eslint: 10.11.0
+  typescript: 6.0.3
+  vitest: 4.1.11
+  zod: 4.6.5
+
+# Exact versions on `pnpm add`; upgrades are deliberate PRs, never drift.
+savePrefix: ""
