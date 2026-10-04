@@ -5,12 +5,27 @@ deal pipeline, contracts, deliverables, invoicing, payment chasing, renewals.
 Portfolio project: the repo must show planning → decisions → execution.
 
 ## About me
-I'm a software engineer (NestJS, Next.js, MySQL, multi-tenant SaaS) and a
-small fitness/lifestyle creator. I have never done a brand deal myself.
-I'm using this project to land a senior engineering role, so I must
-deeply understand every decision.
+
+Solo founder-engineer building a global product for creators worldwide.
+I'm currently based in Bangladesh (likely relocating to Germany), which
+only matters for company registration and payment-provider eligibility —
+never for the product, its market, or its users.
+Stack experience: NestJS, Next.js, MySQL, multi-tenant SaaS. Small
+fitness/lifestyle creator; I have never done a brand deal myself. I must
+deeply understand every decision, because I will maintain this product and
+defend it in senior engineering interviews.
+
+## Product principles
+
+- Decided: ORM is Drizzle (MySQL). Subscription billing via Stripe
+  (test mode until a company is registered in a Stripe-supported
+  country), behind a BillingProvider interface so the provider can be
+  swapped later. Use Stripe Tax for tax calculation. The MVP does NOT
+  process brand-to-creator payments: invoices carry the creator's own
+  payment details and we track status and chase.
 
 ## Stack
+
 - pnpm workspaces + Turborepo
 - apps/api: NestJS, TypeScript strict
 - apps/web: Next.js App Router, Tailwind, shadcn/ui, TanStack Query
@@ -19,6 +34,7 @@ deeply understand every decision.
 - Redis + BullMQ later
 
 ## Working rules (always follow)
+
 1. Never commit to main (except initial setup). Every task: new branch →
    commits → PR via gh. Never merge PRs yourself; I merge after review.
 2. Conventional Commits. Small, focused commits.
@@ -46,11 +62,12 @@ deeply understand every decision.
     - When this decision would be WRONG
     - Concepts to understand (simple explanation + small example each)
     - Interview questions: 5 likely questions + strong model answers
-      + the follow-up an interviewer would ask next
+      - the follow-up an interviewer would ask next
     - Explain-it-back check: 3 questions I should answer without looking
 11. Explainers are for my understanding: concrete, use this project's code
     as examples, no filler. Assume I'm smart but new to the topic.
 
 ## Docs layout
+
 docs/product/brief.md · docs/roadmap.md · docs/architecture.md ·
 docs/adr/ · docs/design/ · docs/devlog/YYYY-MM-DD.md · docs/runbooks/
