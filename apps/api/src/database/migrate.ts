@@ -10,6 +10,7 @@ import { migrate } from "drizzle-orm/mysql2/migrator";
 import { createConnection, type Connection } from "mysql2/promise";
 import { loadEnvOrExit } from "../config/env.js";
 import { createLogger } from "../logging/logger.js";
+import { initSentry, reportError } from "../observability/sentry.js";
 import { buildConnectionOptions } from "./connection-options.js";
 import { runMigrations } from "./migration-runner.js";
 import { checkMigrationsFolder } from "./migration-safety.js";
@@ -19,6 +20,8 @@ const migrationsFolder = fileURLToPath(new URL("../../drizzle", import.meta.url)
 
 const env = loadEnvOrExit();
 const logger = createLogger(env).child({ job: "migrate" });
+// A failed migration is exactly what should reach an inbox.
+initSentry(env);
 
 // One connection, so the advisory lock and the migrations share a session.
 let connection: Connection | undefined;
@@ -35,6 +38,7 @@ try {
   });
 } catch (error) {
   logger.fatal({ err: error }, "migration failed; nothing new will be deployed");
+  await reportError(error, { tags: { job: "migrate" } });
   process.exitCode = 1;
 } finally {
   await connection?.end().catch((error: unknown) => {

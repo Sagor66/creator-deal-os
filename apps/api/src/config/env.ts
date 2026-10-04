@@ -44,6 +44,10 @@ const EnvSchema = z
       .transform(restoreNewlines)
       .refine((value) => PEM_CERTIFICATE.test(value), "must be a PEM certificate")
       .optional(),
+    // Error tracking (docs/design/observability.md). No DSN = reporting off (local, tests).
+    // The DSN isn't a secret: it only lets you send events.
+    SENTRY_DSN: z.url({ protocol: /^https?$/ }).optional(),
+    SENTRY_ENVIRONMENT: z.enum(["development", "staging", "production"]).optional(),
   })
   .transform((env) => ({
     ...env,
@@ -53,6 +57,14 @@ const EnvSchema = z
     DATABASE_TLS: env.DATABASE_TLS ?? (env.NODE_ENV === "production" ? "verify" : "off"),
   }))
   .superRefine((env, ctx) => {
+    // One image runs as staging and as production, so the label must be explicit.
+    if (env.SENTRY_DSN !== undefined && env.SENTRY_ENVIRONMENT === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["SENTRY_ENVIRONMENT"],
+        message: "is required when SENTRY_DSN is set (staging | production | development)",
+      });
+    }
     if (env.DATABASE_CA_CERT !== undefined && env.DATABASE_TLS === "off") {
       ctx.addIssue({
         code: "custom",

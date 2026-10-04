@@ -13,7 +13,15 @@
     "LOG_LEVEL",
     "LOG_FORMAT",
     "TRUST_PROXY",
-    "SHUTDOWN_TIMEOUT_MS"
+    "SHUTDOWN_TIMEOUT_MS",
+    "SENTRY_DSN",
+    "SENTRY_ENVIRONMENT",
+    "SENTRY_AUTH_TOKEN",
+    "SENTRY_ORG",
+    "SENTRY_PROJECT",
+    "SENTRY_RELEASE",
+    "DEBUG_PAGES_ENABLED",
+    "CI"
   ],
   "tasks": {
     "build": {

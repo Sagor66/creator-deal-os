@@ -46,7 +46,7 @@
 | Fact | Source |
 |---|---|
 | **Managed MySQL with point-in-time recovery (PITR) is never free.**<br>Cheapest options: RDS db.t4g.micro ≈ $12–15/mo, Cloud SQL db-f1-micro ≈ $8 (shared core, no SLA), DigitalOcean $15.<br>Aiven offers PITR only from $75. PlanetScale Vitess has no PITR. Render and Fly offer no managed MySQL. | [RDS](https://aws.amazon.com/rds/mysql/pricing/), [Cloud SQL](https://cloud.google.com/sql/pricing), [DO](https://docs.digitalocean.com/products/databases/mysql/details/pricing/), [Aiven](https://aiven.io/pricing/mysql), [PlanetScale](https://planetscale.com/docs/postgres-vs-vitess) |
-| **Aiven free MySQL** is real MySQL 8.4: 1 CPU, 1 GB RAM, up to 8 GB of disk, no card required.<br>Limits: you can't choose the region, there's no VPC, no static IPs, and only limited backups. Services may be powered off when idle. | [Aiven free plan](https://aiven.io/docs/platform/concepts/free-plan) |
+| **Aiven free MySQL** is real MySQL 8.4: 1 CPU, 1 GB RAM, up to 8 GB of disk, no card required.<br>Limits: you can't choose the region, there's no VPC, no static IPs, and a single disaster-recovery backup only (no PITR, no forking, so not restorable by us). Services may be powered off when idle. | [Aiven free plan](https://aiven.io/docs/platform/concepts/free-plan), [Aiven MySQL plans](https://aiven.io/pricing/mysql) |
 | Aiven free plans run on DigitalOcean. In Europe that means Amsterdam, London or Frankfurt. | secondary source, [Aiven](https://aiven.io/pricing/mysql) |
 | **TiDB Starter** is free and in Frankfurt, but it is *not* MySQL.<br>Its default collation is `utf8mb4_bin`, it has no `SKIP LOCKED`, and auto-increment IDs aren't sequential. | [TiDB compatibility](https://docs.pingcap.com/tidbcloud/mysql-compatibility) |
 | **Oracle's Always Free MySQL HeatWave** has no PITR and keeps backups for only 1 day. It's reachable only from inside Oracle's private network. | [Oracle](https://blogs.oracle.com/mysql/heatwave-always-free-tier-disaster-recovery-support) |
@@ -139,9 +139,10 @@ Note 1: storage beyond Artifact Registry's free 0.5 GB costs $0.10/GB-month. A c
 - **Transferable experience:** containers, IAM, OIDC federation, probes, revisions and expand/contract migrations look the same on any cloud.
 
 **Negative, and accepted for Phase 0:**
-- **No point-in-time recovery.** Aiven free keeps limited backups.
-  - Acceptable only because there is **no real user data**.
-  - It's the hard trigger for Phase 1.
+- **No point-in-time recovery, and no backup we can restore ourselves** (verified 2026-10-04; see the amendment below).
+  - Aiven free keeps a "single backup only for disaster recovery", with no PITR and no forking. Aiven restores by forking, so that backup covers Aiven losing the node, not our mistakes.
+  - **Phase 0 recovery is our own encrypted logical dump,** taken before risky migrations ([restore runbook](../runbooks/restore-database.md)).
+  - Acceptable only because there is **no real user data**. It's the hard trigger for Phase 1.
 - **The database endpoint is public.** The free tier has no VPC or static IPs, and Cloud Run's outbound IP addresses change, so an IP allowlist can't help.
   - Mitigations: verified TLS, long random passwords, and least-privilege users.
   - The API user can't run DDL.
@@ -163,3 +164,14 @@ Note 1: storage beyond Artifact Registry's free 0.5 GB costs $0.10/GB-month. A c
   - a company exists and live billing is near (brief §8)
   - or the monthly bill passes about $50
 - **Leave GCP** if a client, employer or interview story needs AWS more than the migration costs. The paid comparison above is the starting point.
+
+## Amendments
+
+**2026-10-04 (#24), backups verified.**
+- **What the ADR originally said:** "Aiven free keeps limited backups", which read as if we could restore from them.
+- **What Aiven's plan table actually says:** Free: "single backup only for disaster recovery"; PITR and forking not available. Restores on Aiven are forks, so **no user-initiated restore exists on the free plan**.
+- **The corrections, both reflected above:**
+  - Phase 0's recovery path is our own logical dumps ([restore runbook](../runbooks/restore-database.md)).
+  - Its RPO is "the age of the last manual dump".
+- **The decision itself is unchanged.** There is still no real data, and Phase 1 is still triggered by the first real user's data.
+

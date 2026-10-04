@@ -176,6 +176,8 @@ jobs:
           platforms: linux/amd64
           load: true
           tags: cdo-api:ci
+          # No Sentry token on PRs: the build must succeed without uploading source maps.
+          build-args: APP_VERSION=${{ env.VERSION }}
           cache-from: type=gha,scope=api
           cache-to: type=gha,scope=api,mode=max
 
@@ -187,6 +189,8 @@ jobs:
           platforms: linux/amd64
           load: true
           tags: cdo-web:ci
+          # No Sentry token on PRs: the build must succeed without uploading source maps.
+          build-args: APP_VERSION=${{ env.VERSION }}
           cache-from: type=gha,scope=web
           cache-to: type=gha,scope=web,mode=max
 

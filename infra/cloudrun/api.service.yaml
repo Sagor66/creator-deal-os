@@ -39,6 +39,11 @@ spec:
             # Inside Cloud Run's 10 s between SIGTERM and SIGKILL.
             - name: SHUTDOWN_TIMEOUT_MS
               value: "8000"
+            # Error tracking (docs/design/observability.md). An empty DSN leaves it off.
+            - name: SENTRY_DSN
+              value: "${SENTRY_DSN_API}"
+            - name: SENTRY_ENVIRONMENT
+              value: "${ENVIRONMENT}"
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:

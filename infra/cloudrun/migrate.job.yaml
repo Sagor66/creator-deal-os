@@ -28,6 +28,11 @@ spec:
                   value: production
                 - name: APP_VERSION
                   value: "${APP_VERSION}"
+                # A failed migration reports to Sentry before the job exits 1.
+                - name: SENTRY_DSN
+                  value: "${SENTRY_DSN_API}"
+                - name: SENTRY_ENVIRONMENT
+                  value: "${ENVIRONMENT}"
                 - name: DATABASE_URL
                   valueFrom:
                     secretKeyRef:

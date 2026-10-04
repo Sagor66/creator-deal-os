@@ -28,8 +28,24 @@ COPY --from=prune /repo/out/json/ ./
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm-store \
     pnpm install --frozen-lockfile --store-dir /pnpm-store
 COPY --from=prune /repo/out/full/ ./
+# Source maps go to Sentry, never into the image (docs/design/observability.md §5).
+# The token is a BuildKit secret, never an ARG: ARGs are visible in `docker history`.
+# Without one (PR CI, local builds) the upload is skipped and the build still succeeds.
+ARG APP_VERSION=dev
+ARG SENTRY_ORG=""
+ARG SENTRY_PROJECT=""
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm-store \
+    --mount=type=secret,id=sentry_auth_token,required=false \
     pnpm exec turbo run build --filter=@cdo/api \
+    && if [ -s /run/secrets/sentry_auth_token ]; then \
+         cd apps/api \
+         && export SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token)" \
+         && pnpm exec sentry-cli sourcemaps inject dist \
+         && pnpm exec sentry-cli sourcemaps upload --org "$SENTRY_ORG" --project "$SENTRY_PROJECT" \
+              --release "$APP_VERSION" dist \
+         && cd ../..; \
+       fi \
+    && find apps/api/dist -name "*.map" -delete \
     && pnpm --filter=@cdo/api deploy --prod --store-dir /pnpm-store /prod/api
 
 # 3. Runtime: no shell, no package manager, non-root (UID 65532).

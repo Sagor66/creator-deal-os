@@ -4,16 +4,23 @@ import { AppModule } from "./app.module.js";
 import { loadEnvOrExit } from "./config/env.js";
 import { createLogger } from "./logging/logger.js";
 import { PinoNestLogger } from "./logging/nest-logger.js";
+import { initSentry, reportError } from "./observability/sentry.js";
 
 const env = loadEnvOrExit();
 const logger = createLogger(env);
+// Before Nest exists, so even a failure while booting is reported.
+initSentry(env);
 
 process.on("unhandledRejection", (reason) => {
   logger.error({ err: reason }, "unhandled promise rejection");
+  void reportError(reason, { tags: { handler: "unhandledRejection" } });
 });
 process.on("uncaughtException", (error) => {
   logger.fatal({ err: error }, "uncaught exception");
-  process.exit(1);
+  // Deliver the report before dying; reportError never takes longer than its flush timeout.
+  void reportError(error, { tags: { handler: "uncaughtException" } }).finally(() =>
+    process.exit(1),
+  );
 });
 
 const app = await NestFactory.create<NestExpressApplication>(AppModule.forRoot({ env, logger }), {

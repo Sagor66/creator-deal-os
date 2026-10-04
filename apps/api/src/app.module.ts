@@ -4,6 +4,7 @@ import {
   type MiddlewareConsumer,
   type NestModule,
 } from "@nestjs/common";
+import { APP_FILTER } from "@nestjs/core";
 import { ENV, type Env } from "./config/env.js";
 import { DatabaseModule } from "./database/database.module.js";
 import { HEALTH_INDICATORS, type HealthIndicator } from "./health/health-indicator.js";
@@ -13,6 +14,7 @@ import { ReadinessService } from "./health/readiness.service.js";
 import { LOGGER, type AppLogger } from "./logging/logger.js";
 import { RequestContextMiddleware } from "./logging/request-context.middleware.js";
 import { MetaController } from "./meta/meta.controller.js";
+import { ErrorReportingFilter } from "./observability/error-reporting.filter.js";
 import { EXIT, ShutdownService, type ExitFn } from "./shutdown/shutdown.service.js";
 
 export interface AppModuleOptions {
@@ -36,6 +38,8 @@ export class AppModule implements NestModule {
         { provide: LOGGER, useValue: logger },
         { provide: EXIT, useValue: exitProcess },
         ShutdownService,
+        // Reports unexpected errors to Sentry (a no-op without a DSN), then responds as Nest would.
+        { provide: APP_FILTER, useClass: ErrorReportingFilter },
         ReadinessService,
         MysqlHealthIndicator,
         {
