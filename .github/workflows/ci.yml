@@ -84,6 +84,11 @@ jobs:
       - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: moderate
+          # Time-boxed exception. GHSA-vfj7-8cjw-p6xm (braces <= 3.0.3, stack exhaustion on deeply
+          # nested glob patterns) has no patched release. It is reached only through dev tooling
+          # (shadcn CLI, @next/eslint-plugin-next) running patterns we write; `audit --prod` is clean.
+          # Remove when braces ships a fix. Review by 2026-11-04.
+          allow-ghsas: GHSA-vfj7-8cjw-p6xm
 
   audit:
     name: audit
