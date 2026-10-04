@@ -27,7 +27,18 @@ COPY --from=prune /repo/out/json/ ./
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm-store \
     pnpm install --frozen-lockfile --store-dir /pnpm-store
 COPY --from=prune /repo/out/full/ ./
-RUN pnpm exec turbo run build --filter=@cdo/web \
+# With a token, @sentry/nextjs uploads source maps and deletes the client ones
+# (docs/design/observability.md §5). The token is a BuildKit secret, never an ARG;
+# without one (PR CI, local builds) no maps are generated at all.
+ARG APP_VERSION=dev
+ARG SENTRY_ORG=""
+ARG SENTRY_PROJECT=""
+RUN --mount=type=secret,id=sentry_auth_token,required=false \
+    if [ -s /run/secrets/sentry_auth_token ]; then \
+      export SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token)"; \
+    fi \
+    && SENTRY_RELEASE="$APP_VERSION" SENTRY_ORG="$SENTRY_ORG" SENTRY_PROJECT="$SENTRY_PROJECT" \
+       pnpm exec turbo run build --filter=@cdo/web \
     && mkdir -p /out/cache
 
 # 3. Runtime: no shell, no package manager, non-root (UID 65532).

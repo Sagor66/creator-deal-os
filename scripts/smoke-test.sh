@@ -63,4 +63,16 @@ check "web reaches the api and sees version $version" "data-version=\"$version\"
 check "web reports the api ready" 'data-readiness="ready"' "$body"
 check "web sends HSTS" '^strict-transport-security: max-age=[0-9]+' "$headers"
 
+# Source maps live in Sentry, never on the site (docs/design/observability.md §5):
+# take a real JS chunk from the page; it must load, and its .map must not.
+chunk="$(grep -oE '/_next/static/[^"]+[.]js' "$body" | head -1 || true)"
+if [[ -z "$chunk" ]]; then
+  echo "FAIL no /_next/static JS chunk found in the page" >&2
+  exit 1
+fi
+fetch "$web$chunk" 200
+echo "ok   web serves its JS ($chunk)"
+fetch "$web$chunk.map" 404
+echo "ok   web does not serve source maps ($chunk.map → 404)"
+
 echo "smoke test passed: web=$web api=$api version=$version"

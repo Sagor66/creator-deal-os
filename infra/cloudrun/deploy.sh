@@ -3,8 +3,10 @@
 # Called by .github/workflows/deploy.yml for staging and production; runnable
 # by hand with the same variables (docs/runbooks/deploy-and-rollback.md).
 #
-# Required: PROJECT_ID, REGION, API_IMAGE, WEB_IMAGE (by digest), APP_VERSION
+# Required: ENVIRONMENT (staging | production), PROJECT_ID, REGION,
+#           API_IMAGE, WEB_IMAGE (by digest), APP_VERSION
 # Optional: PUBLIC_WEB_URL, PUBLIC_API_URL (custom domains, used by the smoke test)
+#           SENTRY_DSN_API, SENTRY_DSN_WEB (empty = error tracking off)
 #
 # Order matters (docs/design/deployment.md §4):
 #   1. migrate (old api still serving; migrations are expand/contract)
@@ -14,7 +16,16 @@
 # Any failure stops the script, and whatever already serves keeps serving.
 set -euo pipefail
 
-: "${PROJECT_ID:?}" "${REGION:?}" "${API_IMAGE:?}" "${WEB_IMAGE:?}" "${APP_VERSION:?}"
+: "${ENVIRONMENT:?}" "${PROJECT_ID:?}" "${REGION:?}" "${API_IMAGE:?}" "${WEB_IMAGE:?}" "${APP_VERSION:?}"
+case "$ENVIRONMENT" in
+  # Deliberate-error pages (docs/runbooks/monitoring-and-alerts.md) exist only in staging.
+  staging) DEBUG_PAGES_ENABLED=true ;;
+  production) DEBUG_PAGES_ENABLED=false ;;
+  *)
+    echo "::error::ENVIRONMENT must be staging or production, got: $ENVIRONMENT" >&2
+    exit 1
+    ;;
+esac
 for image in "$API_IMAGE" "$WEB_IMAGE"; do
   if [[ "$image" != *@sha256:* ]]; then
     echo "::error::deploy by digest only, got: $image" >&2
@@ -29,12 +40,16 @@ trap 'rm -rf "$rendered"' EXIT
 
 # Fill the ${...} placeholders this script owns, and nothing else.
 render() {
-  sed -e "s|\${PROJECT_ID}|${PROJECT_ID}|g" \
+  sed -e "s|\${ENVIRONMENT}|${ENVIRONMENT}|g" \
+    -e "s|\${PROJECT_ID}|${PROJECT_ID}|g" \
     -e "s|\${REGION}|${REGION}|g" \
     -e "s|\${API_IMAGE}|${API_IMAGE}|g" \
     -e "s|\${WEB_IMAGE}|${WEB_IMAGE}|g" \
     -e "s|\${APP_VERSION}|${APP_VERSION}|g" \
     -e "s|\${API_URL}|${API_URL:-}|g" \
+    -e "s|\${SENTRY_DSN_API}|${SENTRY_DSN_API:-}|g" \
+    -e "s|\${SENTRY_DSN_WEB}|${SENTRY_DSN_WEB:-}|g" \
+    -e "s|\${DEBUG_PAGES_ENABLED}|${DEBUG_PAGES_ENABLED}|g" \
     "$here/$1" >"$rendered/$1"
   if grep -nE '^[^#]*[$][{]' "$rendered/$1"; then
     echo "::error::unfilled placeholder in $1" >&2

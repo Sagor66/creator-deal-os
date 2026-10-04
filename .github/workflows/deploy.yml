@@ -102,6 +102,14 @@ jobs:
           push: true
           provenance: false
           tags: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/images/api:${{ steps.commit.outputs.sha }}
+          # Source maps go to Sentry during this one build (docs/design/observability.md §5).
+          # The token is a BuildKit secret (never a build arg); empty = upload skipped.
+          build-args: |
+            APP_VERSION=${{ steps.commit.outputs.version }}
+            SENTRY_ORG=${{ vars.SENTRY_ORG }}
+            SENTRY_PROJECT=${{ vars.SENTRY_PROJECT_API }}
+          secrets: |
+            sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
           cache-from: type=gha,scope=api
           cache-to: type=gha,scope=api,mode=max
 
@@ -115,6 +123,12 @@ jobs:
           push: true
           provenance: false
           tags: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/images/web:${{ steps.commit.outputs.sha }}
+          build-args: |
+            APP_VERSION=${{ steps.commit.outputs.version }}
+            SENTRY_ORG=${{ vars.SENTRY_ORG }}
+            SENTRY_PROJECT=${{ vars.SENTRY_PROJECT_WEB }}
+          secrets: |
+            sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
           cache-from: type=gha,scope=web
           cache-to: type=gha,scope=web,mode=max
 
@@ -132,6 +146,9 @@ jobs:
       - name: Migrate, deploy and smoke-test staging
         id: deploy
         env:
+          ENVIRONMENT: staging
+          SENTRY_DSN_API: ${{ vars.SENTRY_DSN_API }}
+          SENTRY_DSN_WEB: ${{ vars.SENTRY_DSN_WEB }}
           API_IMAGE: ${{ steps.images.outputs.api }}
           WEB_IMAGE: ${{ steps.images.outputs.web }}
           APP_VERSION: ${{ steps.commit.outputs.version }}
@@ -195,6 +212,9 @@ jobs:
       - name: Migrate, deploy and smoke-test production
         id: deploy
         env:
+          ENVIRONMENT: production
+          SENTRY_DSN_API: ${{ vars.SENTRY_DSN_API }}
+          SENTRY_DSN_WEB: ${{ vars.SENTRY_DSN_WEB }}
           API_IMAGE: ${{ steps.images.outputs.api }}
           WEB_IMAGE: ${{ steps.images.outputs.web }}
           APP_VERSION: ${{ needs.staging.outputs.version }}

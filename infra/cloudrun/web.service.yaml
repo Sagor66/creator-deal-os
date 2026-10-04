@@ -31,6 +31,16 @@ spec:
             # Server-to-server: the api's own run.app URL, never the public domain.
             - name: API_URL
               value: "${API_URL}"
+            - name: APP_VERSION
+              value: "${APP_VERSION}"
+            # Error tracking for the server and, via the rendered config, the browser.
+            - name: SENTRY_DSN
+              value: "${SENTRY_DSN_WEB}"
+            - name: SENTRY_ENVIRONMENT
+              value: "${ENVIRONMENT}"
+            # /debug/errors: on in staging, off in production (deploy.sh decides).
+            - name: DEBUG_PAGES_ENABLED
+              value: "${DEBUG_PAGES_ENABLED}"
           resources:
             limits:
               cpu: "1"
