@@ -1,0 +1,54 @@
+# Cloud Run service: web. Rendered and applied by infra/cloudrun/deploy.sh.
+# Design: docs/design/deployment.md §5.
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: web
+  labels:
+    cloud.googleapis.com/location: "${REGION}"
+  annotations:
+    run.googleapis.com/ingress: all
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "2"
+        run.googleapis.com/cpu-throttling: "true"
+        run.googleapis.com/startup-cpu-boost: "true"
+    spec:
+      # A dedicated identity with no permissions at all (the default one has Editor).
+      serviceAccountName: "web-runtime@${PROJECT_ID}.iam.gserviceaccount.com"
+      containerConcurrency: 80
+      timeoutSeconds: 30
+      containers:
+        - name: web
+          image: "${WEB_IMAGE}"
+          ports:
+            - name: http1
+              containerPort: 8080
+          env:
+            # Server-to-server: the api's own run.app URL, never the public domain.
+            - name: API_URL
+              value: "${API_URL}"
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            periodSeconds: 2
+            timeoutSeconds: 2
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 3
+  traffic:
+    - percent: 100
+      latestRevision: true
