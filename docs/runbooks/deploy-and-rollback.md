@@ -6,7 +6,7 @@
 
 > **Secrets go in exactly one place: Secret Manager, through `infra/gcp/set-secret.sh`.**
 > - Never put a password, database URL or token in a chat, issue, PR, commit, screenshot or shell command line.
-> - GitHub holds **no secrets** for deploys, only non-secret variables.
+> - GitHub holds **no cloud secrets**, only non-secret variables, plus one optional upload-only Sentry token ([monitoring runbook](monitoring-and-alerts.md)).
 
 ## 1. First-time setup (once)
 
@@ -35,7 +35,10 @@
 |---|---|---|
 | `GCP_PROJECT_ID`, `GCP_REGION`, `GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_DEPLOYER_SERVICE_ACCOUNT` | each environment (`staging`, `production`) | printed by `bootstrap.sh` |
 | `PUBLIC_WEB_URL`, `PUBLIC_API_URL` | each environment, **only once a domain exists** | e.g. `https://app.<domain>` |
+| `SENTRY_ORG`, `SENTRY_PROJECT_API`, `SENTRY_PROJECT_WEB`, `SENTRY_DSN_API`, `SENTRY_DSN_WEB` | repository | from Sentry ([monitoring runbook §1](monitoring-and-alerts.md)). Optional: unset means error tracking is off |
 | `DEPLOY_ENABLED` | repository | `true`, set **last** (it switches deploys on) |
+
+**The one GitHub secret:** `SENTRY_AUTH_TOKEN` on the `staging` environment. It's a Sentry organization token, limited to uploading source maps ([monitoring runbook §1.2](monitoring-and-alerts.md)). Optional: without it, source maps aren't uploaded.
 
 **DNS records:** none until a domain is bought. When one is, see §9.
 

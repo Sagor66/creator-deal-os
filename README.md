@@ -37,6 +37,7 @@ apps/api            NestJS 12 (ESM): HTTP API; owns the database
 apps/web            Next.js 16 App Router, Tailwind 4, shadcn/ui, TanStack Query
 packages/schemas    zod contracts shared by api and web (compiled ESM package)
 packages/config     shared tsconfig bases and ESLint flat configs
+packages/observability  PII scrubbing and Sentry data-collection policy shared by api and web
 compose.yaml        local MySQL 8.4 and Redis
 infra/              Cloud Run manifests, deploy script, one-time GCP setup
 scripts/            smoke test used after every deploy
@@ -89,6 +90,8 @@ GitHub's own secret scanning, push protection and Dependabot alerts are also on.
 - **Why this hosting:** [ADR-005](docs/adr/005-hosting-and-environments.md).
 - **How the pipeline works:** [design note](docs/design/deployment.md).
 - **First-time setup, rollback, secrets:** [runbook](docs/runbooks/deploy-and-rollback.md).
+- **Errors (Sentry) and uptime (Better Stack):** [monitoring runbook](docs/runbooks/monitoring-and-alerts.md), [ADR-006](docs/adr/006-error-tracking-and-uptime.md).
+- **Backups and restores:** [restore runbook](docs/runbooks/restore-database.md).
 
 ```sh
 pnpm --filter @cdo/api build && pnpm --filter @cdo/api db:migrate   # apply migrations to the local database

@@ -23,6 +23,8 @@ flowchart LR
   end
 
   gha["GitHub Actions<br/>CI and deploy"]
+  sentry[("Sentry, EU region<br/>errors: api, web, browser")]
+  uptime["Better Stack<br/>uptime checks every 3 min"]
 
   user -- "HTTPS" --> web
   web -- "HTTPS, server-side only" --> api
@@ -35,6 +37,11 @@ flowchart LR
   ar -. "pull by digest" .-> web
   ar -. "pull by digest" .-> api
   ar -. "pull by digest" .-> migrate
+  api -. "errors (scrubbed)" .-> sentry
+  web -. "errors (scrubbed)" .-> sentry
+  user -. "browser errors" .-> sentry
+  gha -. "source maps (build only)" .-> sentry
+  uptime -. "GET /health/ready, /api/health" .-> gcp
 ```
 
 **Rules this picture encodes:**
@@ -51,6 +58,7 @@ flowchart LR
 | **migrate** | `apps/api/src/database/migrate.ts` | Applies pending migrations under a MySQL lock. Refuses unacknowledged destructive statements. | [ADR-002](adr/002-orm-choice.md), [design note](design/deployment.md) |
 | **schemas** | `packages/schemas` | zod contracts shared by api and web (`/meta`, readiness report). | ADR-001 |
 | **MySQL** | `compose.yaml` locally; Aiven in deployed environments | MySQL 8.4, UTF-8 (`utf8mb4`), UTC. | ADR-002, [ADR-005](adr/005-hosting-and-environments.md) |
+| **observability** | `packages/observability`, `apps/*/src/**/sentry*`, `instrumentation*.ts` | Sentry for the api, the Next.js server and the browser: runtime environment and release, PII scrubbing, a flush before responding. Better Stack checks health from outside. | [ADR-006](adr/006-error-tracking-and-uptime.md), [design note](design/observability.md) |
 
 ## Environments
 
@@ -148,6 +156,11 @@ sequenceDiagram
 
   `SHUTDOWN_TIMEOUT_MS` stays inside Cloud Run's 10-second grace period.
 - **Logs:** one JSON line per event to stdout, which Cloud Logging picks up. Secrets and personal data are redacted.
+- **Errors and uptime** ([ADR-006](adr/006-error-tracking-and-uptime.md)):
+  - **What's reported:** unexpected errors (never 4xx) go to Sentry with environment, release and request ID. They're scrubbed in-process and flushed before responding.
+  - **Emails go out for two things:** a new or regressed **production** issue, and a service down for 3+ minutes.
+  - **Source maps** are uploaded from CI and never served.
+- **Backups:** Phase 0 relies on our own encrypted logical dumps, because Aiven free can't be restored by us. Phase 1 adds PITR ([restore runbook](runbooks/restore-database.md)).
 - **Tenancy (M2):** a `workspace_id` on every tenant-owned table, plus scoped repositories ([ADR-002](adr/002-orm-choice.md)).
 
 ## What changes later
@@ -167,3 +180,4 @@ sequenceDiagram
 - [ADR-002](adr/002-orm-choice.md): ORM (Drizzle + mysql2)
 - [ADR-003](adr/003-repo-visibility-and-license.md): repo visibility and license
 - [ADR-005](adr/005-hosting-and-environments.md): hosting and environments
+- [ADR-006](adr/006-error-tracking-and-uptime.md): error tracking and uptime monitoring
