@@ -1,0 +1,11 @@
+# Generated files
+pnpm-lock.yaml
+**/dist/
+**/.next/
+**/.turbo/
+**/coverage/
+**/next-env.d.ts
+
+# Prose is formatted by hand: Prettier would re-pad every table, and the docs
+# PRs still open on this stack would conflict for no gain.
+*.md

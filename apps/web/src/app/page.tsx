@@ -12,7 +12,9 @@ export default async function HomePage() {
   return (
     <main className="mx-auto flex max-w-xl flex-col gap-6 px-4 py-16">
       <h1 className="text-3xl font-semibold tracking-tight">Creator Deal OS</h1>
-      <p className="text-neutral-600">Scaffold check: the web app calls the API and validates the answer with the shared schema.</p>
+      <p className="text-neutral-600">
+        Scaffold check: the web app calls the API and validates the answer with the shared schema.
+      </p>
       {status.ok ? (
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-lg border p-4 text-sm">
           <dt className="text-neutral-500">API</dt>
@@ -23,7 +25,10 @@ export default async function HomePage() {
           <dd>{status.info.time}</dd>
         </dl>
       ) : (
-        <p role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+        <p
+          role="status"
+          className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"
+        >
           {status.reason}. Start it with <code>pnpm dev</code>.
         </p>
       )}

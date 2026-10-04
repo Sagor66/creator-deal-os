@@ -6,7 +6,10 @@ export type ApiStatus = { ok: true; info: ServiceInfo } | { ok: false; reason: s
  * Asks the API who it is, and checks the answer against the same schema the
  * API used to build it. A response that doesn't match is reported, not trusted.
  */
-export async function getServiceInfo(apiUrl: string, fetchImpl: typeof fetch = fetch): Promise<ApiStatus> {
+export async function getServiceInfo(
+  apiUrl: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<ApiStatus> {
   let response: Response;
   try {
     response = await fetchImpl(new URL("/meta", apiUrl), {

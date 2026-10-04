@@ -13,7 +13,9 @@ describe("ServiceInfoSchema", () => {
   });
 
   it("rejects a different service name", () => {
-    expect(ServiceInfoSchema.safeParse({ ...valid, service: "something-else" }).success).toBe(false);
+    expect(ServiceInfoSchema.safeParse({ ...valid, service: "something-else" }).success).toBe(
+      false,
+    );
   });
 
   it("rejects a time that is not an ISO-8601 datetime", () => {

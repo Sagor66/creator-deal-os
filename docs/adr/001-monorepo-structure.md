@@ -82,8 +82,9 @@ docs/            product, roadmap, ADRs, design notes, runbooks, devlog
 - **Packages never depend on apps.**
 - **Enforced three ways:**
   1. **pnpm's strict install** stops undeclared imports.
-  2. **An ESLint rule in `packages/config`** (`no-restricted-imports` or eslint-plugin-boundaries) catches relative escapes like `../../api/src`.
-  3. **`turbo boundaries` in CI**, advisory only while it's experimental.
+  2. **`turbo boundaries`** (`pnpm check:boundaries`, a blocking CI step) catches relative escapes like `../../api/src` and imports of undeclared packages.
+     - **Tested 2026-10-04:** a relative import from `apps/web` into `apps/api` was reported, with exit code 1.
+     - **Why not an ESLint rule:** `no-restricted-imports` can't reliably express "this path leaves the package", and eslint-plugin-boundaries would need a TypeScript resolver set up for `.js`-suffixed imports.
 - **Internal dependencies** use `workspace:*`.
 
 ### 3. Shared packages are compiled
@@ -132,7 +133,7 @@ docs/            product, roadmap, ADRs, design notes, runbooks, devlog
 - **Every env var has to be listed twice:** in the zod schema and in `turbo.json`. A CI check can compare them later if they drift.
 - **Pinning TypeScript 6 while 7 exists** means we skip TS 7's speed for now.
 - **pnpm 11 refuses packages published less than 24 hours ago** (`minimumReleaseAge`), a supply-chain guard. When a just-released version is blocked, pin the previous one. Don't add exclusions; the scaffold did this with ESLint 10.12.0 → 10.11.0.
-- **`turbo boundaries` is experimental,** so the ESLint rule is what actually enforces boundaries until it's stable.
+- **`turbo boundaries` is experimental, but it's the enforcement.** If it ever reports false positives, make the CI step advisory and add eslint-plugin-boundaries with a TypeScript resolver.
 
 ## When we'd revisit
 - **Team or app count grows** (3+ apps or 3+ developers): re-evaluate Nx for stronger module boundaries and generators.
