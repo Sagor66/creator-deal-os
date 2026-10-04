@@ -56,6 +56,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@cdo/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       '@cdo/schemas':
         specifier: workspace:*
         version: link:../../packages/schemas
@@ -129,6 +132,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@cdo/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       '@cdo/schemas':
         specifier: workspace:*
         version: link:../../packages/schemas

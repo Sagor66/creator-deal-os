@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@cdo/observability": "workspace:*",
     "@cdo/schemas": "workspace:*",
     "@sentry/nextjs": "11.4.0",
     "@tanstack/react-query": "5.104.1",

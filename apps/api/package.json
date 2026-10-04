@@ -17,6 +17,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@cdo/observability": "workspace:*",
     "@cdo/schemas": "workspace:*",
     "@nestjs/common": "12.1.2",
     "@nestjs/core": "12.1.2",

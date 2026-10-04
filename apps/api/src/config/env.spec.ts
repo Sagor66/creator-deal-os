@@ -130,4 +130,31 @@ describe("loadEnv", () => {
       ]);
     });
   });
+
+  describe("error tracking", () => {
+    const dsn = "https://publickey@o1.ingest.de.sentry.io/2";
+
+    it("is off without a DSN", () => {
+      expect(loadEnv(valid).SENTRY_DSN).toBeUndefined();
+    });
+
+    it("accepts a DSN with an explicit environment", () => {
+      expect(loadEnv({ ...valid, SENTRY_DSN: dsn, SENTRY_ENVIRONMENT: "staging" })).toMatchObject({
+        SENTRY_DSN: dsn,
+        SENTRY_ENVIRONMENT: "staging",
+      });
+    });
+
+    it("requires the environment whenever a DSN is set, so no event is mislabelled", () => {
+      expect(problemsOf({ ...valid, SENTRY_DSN: dsn })).toEqual(["SENTRY_ENVIRONMENT: required"]);
+    });
+
+    it("rejects a DSN that isn't an http(s) URL, and an unknown environment", () => {
+      expect(
+        problemsOf({ ...valid, SENTRY_DSN: "not-a-dsn", SENTRY_ENVIRONMENT: "prod" }).map(
+          (problem) => problem.split(":")[0],
+        ),
+      ).toEqual(["SENTRY_DSN", "SENTRY_ENVIRONMENT"]);
+    });
+  });
 });

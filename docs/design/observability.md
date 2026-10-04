@@ -64,7 +64,9 @@
 
 ## 4. PII scrubbing: three layers
 
-1. **SDK defaults:** `sendDefaultPii: false`, so no IPs, cookies or user data by default.
+1. **What the SDK collects: almost nothing.**
+   - Sentry v11 replaced `sendDefaultPii` with `dataCollection`, whose **defaults collect** user info, cookies, headers, request and response bodies, query parameters, stack-frame local variables and database query data. This was found while building.
+   - `minimalDataCollection()` in `@cdo/observability` turns all of it off, apart from three allow-listed request headers. Every SDK uses it.
 2. **`@cdo/observability`**, a new compiled package with no dependencies. Both apps run its `scrubEvent` in `beforeSend` and its `scrubBreadcrumb` in `beforeBreadcrumb`:
    - **Request data:** drops cookies, the body, the query string and environment variables. Keeps only allow-listed headers (`user-agent`, `content-type`, `x-request-id`) and strips the query from URLs.
    - **User:** keeps only `id`, a pseudonymous ID once auth exists. Drops `email`, `ip_address` and `username`.

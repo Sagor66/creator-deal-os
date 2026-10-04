@@ -7,6 +7,8 @@
  * returns a scrubbed copy, and never mutates its input.
  */
 
+import { ALLOWED_HEADERS } from "./data-collection.js";
+
 const FILTERED = "[Filtered]";
 
 /** Keys whose values are never sent, wherever they appear. */
@@ -16,8 +18,7 @@ const SENSITIVE_KEY =
 /** Emails anywhere in a string: messages, breadcrumbs, even MySQL's duplicate-key errors. */
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 
-/** Request headers worth keeping for debugging; everything else is dropped. */
-const ALLOWED_HEADERS = new Set(["user-agent", "content-type", "x-request-id"]);
+const ALLOWED_HEADER_SET = new Set(ALLOWED_HEADERS);
 
 /** URL-valued fields that may carry tokens or personal data in a query string. */
 const URL_FIELDS = ["url", "to", "from"] as const;
@@ -66,7 +67,7 @@ function scrubRequest(request: unknown): void {
   const headers = request["headers"];
   if (isDict(headers)) {
     request["headers"] = Object.fromEntries(
-      Object.entries(headers).filter(([name]) => ALLOWED_HEADERS.has(name.toLowerCase())),
+      Object.entries(headers).filter(([name]) => ALLOWED_HEADER_SET.has(name.toLowerCase())),
     );
   }
 }
