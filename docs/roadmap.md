@@ -5,6 +5,7 @@
 - **The product:** [product/brief.md](product/brief.md).
 - **The evidence:** [product/research.md](product/research.md).
 - **Changes:** this file changes by PR when scope moves. Each milestone ends with a demo-able state and its own exit check.
+- **Tracking:** each milestone is a GitHub milestone. Work items are issues (using `.github/ISSUE_TEMPLATE/`) on the project board.
 
 ## Running alongside M1–M3: validation
 
@@ -18,7 +19,7 @@ The brief rests on assumptions, not interviews (see "Assumptions to validate" in
 
 ## M1: Foundation
 
-**Goal:** an empty but production-shaped monorepo, where every later PR runs through the same checks.
+**Goal:** an empty but production-shaped monorepo, **deployed over HTTPS**, where every later PR runs through the same checks.
 
 **Scope:**
 - **Monorepo:** pnpm workspaces + Turborepo.
@@ -26,7 +27,10 @@ The brief rests on assumptions, not interviews (see "Assumptions to validate" in
   - `apps/web`: Next.js App Router, Tailwind, shadcn/ui, TanStack Query.
   - `packages/schemas`: zod.
   - `packages/config`: tsconfig and eslint.
-- **Tooling:** ESLint, Prettier, Conventional Commits, `.github/pull_request_template.md`.
+- **Tooling:**
+  - ESLint, Prettier, `.editorconfig`, and PR and issue templates.
+  - **Commit hooks:** lint and format staged files; reject commit messages that aren't Conventional Commits.
+  - CI enforces the same rules, because hooks can be skipped.
 - **Config:** zod-validated env in both apps. The app refuses to start on bad config. `.env.example` is committed.
 - **Database:**
   - MySQL 8 in `docker compose` for local dev.
@@ -34,11 +38,24 @@ The brief rests on assumptions, not interviews (see "Assumptions to validate" in
   - Testcontainers harness so repository tests run against real MySQL.
 - **CI:** GitHub Actions runs lint, typecheck, test and build on every PR.
 - **Basics:**
-  - API: `/health` endpoint, structured JSON logging, request IDs.
+  - API:
+    - `/health/live` and `/health/ready` endpoints.
+    - **Graceful shutdown:** on SIGTERM, stop taking traffic, finish in-flight requests and close the DB pool.
+    - Structured JSON logging with request IDs.
   - Web: a placeholder page that calls the API.
+- **First deploy (walking skeleton):**
+  - API and web deployed from `main` after CI passes, over **HTTPS** (hosting ADR).
+  - Production env in the platform's secret store.
+  - Platform health checks wired to the endpoints above.
+  - A `docs/runbooks/deploy.md`.
+  - **Why in M1:** deploy problems found in M5 are expensive. Deploying an empty app now means every later feature ships continuously.
 - **Docs:** `docs/architecture.md` skeleton, an ADR template, and a devlog entry.
 
-**Exit:** a PR runs green CI; `pnpm dev` starts both apps; one repository test passes against real MySQL in CI.
+**Exit:**
+- A PR runs green CI.
+- `pnpm dev` starts both apps.
+- One repository test passes against real MySQL in CI.
+- The deployed web app calls the deployed API over HTTPS.
 
 ## M2: Workspaces + auth
 
@@ -150,8 +167,8 @@ The brief rests on assumptions, not interviews (see "Assumptions to validate" in
   - An in-app feedback button that writes to the DB and notifies the founder.
   - A private beta group chat.
   - A fortnightly call with each beta creator.
-- **Production:**
-  - Hosting (ADR), domain, HTTPS.
+- **Production hardening** (the app has been deployed since M1):
+  - Custom domain.
   - Email deliverability: SPF, DKIM, DMARC.
   - Secrets in the platform's secret store.
 - **Security pass:** an OWASP Top 10 checklist on the codebase, dependency scanning in CI, and an upload-handling review (contracts arrive from strangers, and malware "contracts" are a known attack on creators).
