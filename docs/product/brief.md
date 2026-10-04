@@ -180,7 +180,7 @@ The MVP is scoped to roadmap M2–M5. Each feature traces to a problem in §1.
 
 | Phase | When | Channel | Goal |
 |---|---|---|---|
-| 0. Validate | During M1–M3 | Founder's DMs and network | 10–15 interviews, 3+ real trackers collected (assumptions A1–A5) |
+| 0. Validate | During M1–M3 | Founder's network first, then cold outreach and creator communities worldwide ([validation.md](validation.md)) | 10–15 interviews, 3+ real trackers collected (assumptions A1–A5) |
 | 0. Build in public | M1 onward | Founder's channel: short devlog episodes on building it, and on what creators learn about brand deals | A waitlist of 50+ creators before beta |
 | 1. Private beta | M5 | Hand-picked from the waitlist and network; **concierge onboarding** (we import their spreadsheet with them) | 10–20 weekly-active creators; founding-member offer |
 | 2. Content-led | Post-beta | Free tools that rank and get shared: invoice template, usage-rights pricing guide, "what net-30 really means" guide, a free tracker template that links to the app | Self-serve sign-ups beyond the network |
@@ -225,7 +225,7 @@ The MVP is scoped to roadmap M2–M5. Each feature traces to a problem in §1.
 
 ## 12. Assumptions to validate
 
-**Order matters:** A1–A5 decide whether to build M3–M4 as scoped, so they're tested first, in interviews during M1–M3.
+**Order matters:** A1–A5 decide whether to build M3–M4 as scoped, so they're tested first, in interviews during M1–M3. **Interview plan, script and decision rules:** [validation.md](validation.md).
 
 | # | Assumption | Evidence today | How to test | What changes our mind |
 |---|---|---|---|---|

@@ -10,7 +10,9 @@
 
 The brief rests on assumptions, not interviews (see "Assumptions to validate" in the brief). So this track runs **in parallel with engineering**, not after it:
 
-- **Interviews:** 10–15 fitness/lifestyle creators from the founder's network. Script and notes go in `docs/product/interviews/`, anonymised.
+- **Interviews:** 10–15 fitness/lifestyle creators worldwide, starting with the founder's network.
+  - **Plan, script and decision rules:** [product/validation.md](product/validation.md). The first batch is 5 interviews by 2026-10-18.
+  - **Anonymised batch summaries** go in `docs/product/interviews/`. Raw notes and recordings stay private, because the repo is public.
 - **Their trackers:** collect 3+ real deal trackers (spreadsheets or Notion) to check the data model against.
 - **Decision gate before M4:** re-read the brief against what interviews found and cut or re-scope M4 if needed.
 
