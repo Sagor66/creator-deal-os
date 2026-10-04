@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Button } from "@/components/ui/button";
@@ -7,7 +9,9 @@ import { getServiceInfo } from "@/lib/api";
 export default async function HomePage() {
   // Render on every request: the API is checked at request time, never baked in at build.
   await connection();
-  const status = await getServiceInfo(serverEnv.API_URL);
+  // Reuse the ID a proxy may have set; otherwise start one here and pass it to the API.
+  const requestId = (await headers()).get("x-request-id") ?? randomUUID();
+  const status = await getServiceInfo(serverEnv.API_URL, { requestId });
 
   return (
     <main className="mx-auto flex max-w-xl flex-col gap-6 px-4 py-16">

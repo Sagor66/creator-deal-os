@@ -28,6 +28,23 @@ export function baseConfig({ tsconfigRootDir }) {
       },
     },
     {
+      // Config is read once, validated, in the env module; everything else gets it typed (issue #7).
+      rules: {
+        "no-restricted-properties": [
+          "error",
+          {
+            object: "process",
+            property: "env",
+            message: "Read config from the validated env module (src/config/env.ts or src/env.ts).",
+          },
+        ],
+      },
+    },
+    {
+      files: ["**/src/config/env.ts", "**/src/env.ts", "**/*.config.{js,mjs,cjs,ts}"],
+      rules: { "no-restricted-properties": "off" },
+    },
+    {
       // Config files are plain JS outside every tsconfig; lint them without types.
       files: ["**/*.{js,mjs,cjs}"],
       extends: [tseslint.configs.disableTypeChecked],

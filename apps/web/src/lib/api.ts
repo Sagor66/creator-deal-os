@@ -8,13 +8,16 @@ export type ApiStatus = { ok: true; info: ServiceInfo } | { ok: false; reason: s
  */
 export async function getServiceInfo(
   apiUrl: string,
-  fetchImpl: typeof fetch = fetch,
+  options: { requestId?: string; fetchImpl?: typeof fetch } = {},
 ): Promise<ApiStatus> {
+  const { requestId, fetchImpl = fetch } = options;
   let response: Response;
   try {
     response = await fetchImpl(new URL("/meta", apiUrl), {
       cache: "no-store",
       signal: AbortSignal.timeout(2_000),
+      // Lets one page view be followed into the API's logs.
+      headers: requestId ? { "X-Request-Id": requestId } : {},
     });
   } catch {
     return { ok: false, reason: "API unreachable" };

@@ -1,14 +1,18 @@
 import { ServiceInfoSchema } from "@cdo/schemas";
 import { Test } from "@nestjs/testing";
 import { beforeEach, describe, expect, it } from "vitest";
-import { ENV, type Env } from "../config/env.js";
+import { ENV, loadEnv } from "../config/env.js";
 import { MetaController } from "./meta.controller.js";
 
 describe("MetaController", () => {
   let controller: MetaController;
 
   beforeEach(async () => {
-    const env: Env = { NODE_ENV: "test", PORT: 0, APP_VERSION: "1.2.3" };
+    const env = loadEnv({
+      NODE_ENV: "test",
+      APP_VERSION: "1.2.3",
+      DATABASE_URL: "mysql://test:test@127.0.0.1:3306/test",
+    });
     const moduleRef = await Test.createTestingModule({
       controllers: [MetaController],
       providers: [{ provide: ENV, useValue: env }],

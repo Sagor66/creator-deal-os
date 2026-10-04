@@ -20,15 +20,15 @@ A multi-tenant SaaS for content creators to run brand deals end to end: deal pip
 ```sh
 corepack enable        # once per machine: use the repo's pinned pnpm (11.x)
 pnpm install
+cp .env.example .env   # set MYSQL_PASSWORD and MYSQL_ROOT_PASSWORD; put the same password in DATABASE_URL
+pnpm services:up       # MySQL 8.4 + Redis, waits until healthy
 pnpm dev               # web on http://localhost:3000, API on http://localhost:3001
 ```
 
-**Local MySQL 8.4 and Redis** (not needed until the database lands):
-
-```sh
-cp .env.example .env   # then replace the two "change-me" passwords
-pnpm services:up       # starts both and waits until they're healthy
-```
+**Health:**
+- **Liveness:** `GET http://localhost:3001/health`.
+- **Readiness:** `GET http://localhost:3001/health/ready`. It returns 503 until MySQL answers.
+- **If the API exits at startup with "Invalid environment configuration",** read the list: it names every missing or invalid variable.
 
 ## Repository layout
 
